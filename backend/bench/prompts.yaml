@@ -1,10 +1,16 @@
 # Shared prompt set — every model answers exactly the same questions.
-# Derived from section 7 of the assignment document ("Ölçüm İçin Ortak Prompt Seti"),
-# extended with a RAG suite that exercises grounding.
+# A general-capability set ("Ölçüm İçin Ortak Prompt Seti") covering knowledge,
+# code generation and summarisation, extended with a RAG suite that exercises
+# grounding.
 #
 # expect_all  : every string must appear in the answer (case-insensitive)
 # expect_any  : at least one must appear
 # expect_none : none may appear — used to catch hallucination
+# gold        : the passage(s) that actually hold the answer, used by
+#               `eval_retrieval.py` to measure whether retrieval delivers them.
+#               Identified by file + heading path rather than `chunk_id`: the id
+#               is a content hash and moves whenever the document is edited.
+#               Listing more than one means any of them counts as a hit.
 
 generation:
   - id: knowledge
@@ -39,44 +45,68 @@ rag:
     question: 3 yıldır çalışan bir personelin yıllık izin hakkı kaç gündür?
     expect_all: ["16"]
     grounded: true
+    gold:
+      - file: 01-izin-politikasi.md
+        section: "1. Yıllık Ücretli İzin › 1.1 Hak Ediş"
 
   - id: rag-babalik
     question: Eşim doğum yapacak, kaç gün izin kullanabilirim?
     expect_all: ["10"]
     grounded: true
+    gold:
+      - file: 01-izin-politikasi.md
+        section: "2. Mazeret İzinleri"
 
   - id: rag-izin-devir
     question: Kullanmadığım yıllık izinlerimin kaç günü gelecek yıla devreder ve son kullanma tarihi nedir?
     expect_all: ["10"]
     expect_any: ["30 haziran", "haziran"]
     grounded: true
+    gold:
+      - file: 01-izin-politikasi.md
+        section: "1. Yıllık Ücretli İzin › 1.4 Devir Kuralı"
 
   - id: rag-ofis-gunu
     question: Haftada kaç gün ofisten çalışmam gerekiyor?
     expect_all: ["2"]
     grounded: true
+    gold:
+      - file: 02-calisma-duzeni.md
+        section: "3. Hibrit ve Uzaktan Çalışma › 3.1 Ofis Günü Kuralı"
 
   - id: rag-fazla-mesai
     question: Hafta sonu fazla mesai ücreti nasıl hesaplanır?
     expect_any: ["2 kat", "iki kat", "2 katı"]
     grounded: true
+    gold:
+      - file: 02-calisma-duzeni.md
+        section: "4. Fazla Mesai"
 
   - id: rag-harcirah
     question: Yurt içi seyahatte günlük yemek harcırahı ne kadar?
     expect_all: ["750"]
     grounded: true
+    gold:
+      - file: 03-masraf-ve-yan-haklar.md
+        section: "2. Seyahat ve Harcırah › 2.3 Günlük Yemek Harcırahı"
 
   - id: rag-egitim-butcesi
     question: Yıllık eğitim bütçem ne kadar ve kullanmazsam devreder mi?
     expect_all: ["25.000"]
     expect_any: ["devretmez", "devretmiyor", "yanar"]
     grounded: true
+    gold:
+      - file: 03-masraf-ve-yan-haklar.md
+        section: "3. Yan Haklar › 3.4 Eğitim ve Gelişim Bütçesi"
 
   - id: rag-deneme-suresi
     question: Deneme süresi ne kadar ve uzatılabilir mi?
     expect_all: ["2 ay"]
     expect_any: ["1 ay", "3 ay"]
     grounded: true
+    gold:
+      - file: 04-ise-giris-ve-oryantasyon.md
+        section: "3. Deneme Süresi"
 
   # --- Out-of-scope: the correct behaviour is to refuse, not to answer. ---
   - id: rag-kapsam-disi-arac
@@ -100,19 +130,62 @@ rag:
 # rejected "Harcırah ne kadar?" even though the answer sits in the documents.
 # A threshold calibrated on one phrasing style does not generalise to another,
 # so both styles belong in the set.
+#
+# Entries may be a bare string or a mapping with `question` and `gold`. The
+# mapping form additionally feeds `eval_retrieval.py`; the bare form still works
+# and simply carries no retrieval-quality label.
 calibration:
   in_scope:
-    - Harcırah ne kadar?
-    - Babalık izni kaç gün?
-    - Yıllık izin kaç gün?
-    - Haftada kaç gün ofisteyim?
-    - Fazla mesai ücreti nedir?
-    - İzin devri var mı?
-    - Deneme süresi ne kadar?
-    - Eğitim bütçesi ne kadar?
-    - Yemek kartı limiti nedir?
-    - Doğum izni
-    - uzaktan çalışma kuralları
+    - question: Harcırah ne kadar?
+      gold:
+        - file: 03-masraf-ve-yan-haklar.md
+          section: "2. Seyahat ve Harcırah › 2.3 Günlük Yemek Harcırahı"
+    # The question that exposed the ranking defect documented in report §9.9.
+    - question: Babalık izni kaç gün?
+      gold:
+        - file: 01-izin-politikasi.md
+          section: "2. Mazeret İzinleri"
+    - question: Yıllık izin kaç gün?
+      gold:
+        - file: 01-izin-politikasi.md
+          section: "1. Yıllık Ücretli İzin › 1.1 Hak Ediş"
+    - question: Haftada kaç gün ofisteyim?
+      gold:
+        - file: 02-calisma-duzeni.md
+          section: "3. Hibrit ve Uzaktan Çalışma › 3.1 Ofis Günü Kuralı"
+    - question: Fazla mesai ücreti nedir?
+      gold:
+        - file: 02-calisma-duzeni.md
+          section: "4. Fazla Mesai"
+    - question: İzin devri var mı?
+      gold:
+        - file: 01-izin-politikasi.md
+          section: "1. Yıllık Ücretli İzin › 1.4 Devir Kuralı"
+    - question: Deneme süresi ne kadar?
+      gold:
+        - file: 04-ise-giris-ve-oryantasyon.md
+          section: "3. Deneme Süresi"
+    - question: Eğitim bütçesi ne kadar?
+      gold:
+        - file: 03-masraf-ve-yan-haklar.md
+          section: "3. Yan Haklar › 3.4 Eğitim ve Gelişim Bütçesi"
+    - question: Yemek kartı limiti nedir?
+      gold:
+        - file: 03-masraf-ve-yan-haklar.md
+          section: "3. Yan Haklar › 3.1 Yemek Kartı"
+    - question: Doğum izni
+      gold:
+        - file: 01-izin-politikasi.md
+          section: "4. Doğum ve Ebeveyn İzni"
+    # Deliberately broad: three sections all answer it, so any of them counts.
+    - question: uzaktan çalışma kuralları
+      gold:
+        - file: 02-calisma-duzeni.md
+          section: "3. Hibrit ve Uzaktan Çalışma › 3.1 Ofis Günü Kuralı"
+        - file: 02-calisma-duzeni.md
+          section: "3. Hibrit ve Uzaktan Çalışma › 3.2 Tam Uzaktan Çalışma"
+        - file: 02-calisma-duzeni.md
+          section: "3. Hibrit ve Uzaktan Çalışma › 3.3 Yurt Dışından Çalışma"
   out_of_scope:
     - Şirket aracı
     - Hisse opsiyonu

@@ -1,0 +1,201 @@
+# Follow-up questions offered as chips after an answer.
+#
+# Drafted by `uv run python -m app.gen_suggestions`, then reviewed by hand
+# before being committed. `app.ingest` reads this file, never the model, so the
+# questions shown in the interface are always ones a person has read.
+#
+# Every question must be answerable from its own passage. Editing or deleting a
+# line here is expected; re-run ingest afterwards.
+#
+# The first review pass rewrote 20 of the 74 drafts. One was rejected outright:
+# "Nöbet primi ne kadar?" — section 5 of the working-hours policy promises a
+# fixed on-call premium but never states an amount, so the assistant would have
+# refused its own suggestion. The rest were Turkish that no employee would type,
+# or framings the passage does not support ("Ofis günleri Salı mı yoksa Perşembe
+# mi?" — the default is both).
+passages:
+- file: 01-izin-politikasi.md
+  section: 1. Yıllık Ücretli İzin › 1.1 Hak Ediş
+  questions:
+  - Yıllık izin hakkı hizmet süresine göre kaç gün?
+  - Hafta sonu ve resmî tatiller izinden sayılır mı?
+- file: 01-izin-politikasi.md
+  section: 1. Yıllık Ücretli İzin › 1.2 Avans İzin
+  questions:
+  - Avans izin en fazla kaç gün?
+  - Avans izni kimler kullanabilir?
+- file: 01-izin-politikasi.md
+  section: 1. Yıllık Ücretli İzin › 1.3 Talep ve Onay Süreci
+  questions:
+  - İzin talebi en geç ne zaman girilmeli?
+  - 5 iş gününü aşan izinlerde süre kaç gün?
+- file: 01-izin-politikasi.md
+  section: 1. Yıllık Ücretli İzin › 1.4 Devir Kuralı
+  questions:
+  - Kaç gün izin gelecek yıla devreder?
+  - Devredilen iznin son kullanma tarihi ne zaman?
+- file: 01-izin-politikasi.md
+  section: 2. Mazeret İzinleri
+  questions:
+  - Evlilik izni kaç gün?
+  - Birinci derece yakın vefatında izin kaç gün?
+- file: 01-izin-politikasi.md
+  section: 3. Hastalık İzni
+  questions:
+  - Kaç günlük rapor için belge istenmez?
+  - Rapor kaç gün içinde yüklenmeli?
+- file: 01-izin-politikasi.md
+  section: 4. Doğum ve Ebeveyn İzni
+  questions:
+  - Doğum izni toplam kaç hafta?
+  - Süt izni günde kaç saat?
+- file: 01-izin-politikasi.md
+  section: 5. Ücretsiz İzin
+  questions:
+  - Yılda en fazla kaç gün ücretsiz izin alınabilir?
+  - Ücretsiz izinde yemek ve yol yardımı ödenir mi?
+- file: 01-izin-politikasi.md
+  section: 6. İzin Bakiyesi Sorgulama
+  questions:
+  - İzin bakiyesi ne zaman güncellenir?
+  - Bakiyede uyuşmazlık olursa nereye başvurulur?
+- file: 02-calisma-duzeni.md
+  section: 1. Haftalık Çalışma Süresi
+  questions:
+  - Haftalık çalışma süresi kaç saat?
+  - Günlük net çalışma süresi ne kadar?
+- file: 02-calisma-duzeni.md
+  section: 2. Esnek Çalışma Saatleri
+  questions:
+  - Çekirdek saatler hangi aralıkta?
+  - İşe başlama saati ne zaman seçilebilir?
+- file: 02-calisma-duzeni.md
+  section: 3. Hibrit ve Uzaktan Çalışma › 3.1 Ofis Günü Kuralı
+  questions:
+  - Haftada kaç gün ofisten çalışılır?
+  - Varsayılan ofis günleri hangileri?
+- file: 02-calisma-duzeni.md
+  section: 3. Hibrit ve Uzaktan Çalışma › 3.2 Tam Uzaktan Çalışma
+  questions:
+  - Tam uzaktan çalışma için hangi koşullar gerekli?
+  - Tam uzaktan statüsü ne sıklıkla gözden geçirilir?
+- file: 02-calisma-duzeni.md
+  section: 3. Hibrit ve Uzaktan Çalışma › 3.3 Yurt Dışından Çalışma
+  questions:
+  - Yılda kaç gün yurt dışından çalışılabilir?
+  - Yurt dışı çalışma talebi kaç gün önce yapılmalı?
+- file: 02-calisma-duzeni.md
+  section: 4. Fazla Mesai
+  questions:
+  - Hafta içi fazla mesai kaç katı ödenir?
+  - Aylık fazla mesai üst sınırı kaç saat?
+- file: 02-calisma-duzeni.md
+  section: 5. Nöbet ve Çağrı Üzerine Çalışma
+  questions:
+  - Nöbet süresi kaç gün?
+  - Üst üste kaç hafta nöbet tutulabilir?
+- file: 02-calisma-duzeni.md
+  section: 6. Devamsızlık
+  questions:
+  - Kaç gün bildirimsiz devamsızlık uyarı gerektirir?
+  - Ayda kaç geç kalma görüşme konusu olur?
+- file: 02-calisma-duzeni.md
+  section: 7. Resmî Tatiller ve Köprü Günler
+  questions:
+  - Köprü gün ne zaman ilan edilir?
+  - Köprü gün yıllık izinden düşülür mü?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 1. Masraf Beyanı Süreci
+  questions:
+  - Masraf kaç gün içinde beyan edilmeli?
+  - Onaylanan masraf ayın kaçında ödenir?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 2. Seyahat ve Harcırah › 2.1 Ulaşım
+  questions:
+  - 450 km altı seyahatte hangi ulaşım kullanılır?
+  - Özel araçta kilometre başına ne kadar ödenir?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 2. Seyahat ve Harcırah › 2.2 Konaklama
+  questions:
+  - Yurt içi konaklama limiti ne kadar?
+  - Yurt dışı konaklama limiti kaç EUR?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 2. Seyahat ve Harcırah › 2.3 Günlük Yemek Harcırahı
+  questions:
+  - Yurt içi günlük harcırah ne kadar?
+  - Kahvaltı dâhilse harcırah nasıl değişir?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 3. Yan Haklar › 3.1 Yemek Kartı
+  questions:
+  - Ofis günü başına ne kadar yemek kartı yüklenir?
+  - Uzaktan çalışılan günlerde yükleme yapılır mı?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 3. Yan Haklar › 3.2 Özel Sağlık Sigortası
+  questions:
+  - Sağlık sigortası ne zaman başlar?
+  - Poliçe yenileme dönemi ne zaman?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 3. Yan Haklar › 3.3 Uzaktan Çalışma Desteği
+  questions:
+  - Ev ofis kurulum desteği ne kadar?
+  - Aylık internet ve elektrik katkısı ne kadar?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 3. Yan Haklar › 3.4 Eğitim ve Gelişim Bütçesi
+  questions:
+  - Yıllık eğitim bütçesi ne kadar?
+  - Kullanılmayan eğitim bütçesi devreder mi?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 3. Yan Haklar › 3.5 Doğum ve Evlilik Yardımı
+  questions:
+  - Evlilik yardımı ne kadar?
+  - Doğum yardımı ne kadar?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 4. Ekipman Zimmeti
+  questions:
+  - Dizüstü bilgisayar kaç yılda yenilenir?
+  - Cihaz kaybında ne yapılmalı?
+- file: 03-masraf-ve-yan-haklar.md
+  section: 5. Karşılanmayan Harcamalar
+  questions:
+  - Hangi harcamalar karşılanmaz?
+  - Trafik cezası masraf yazılabilir mi?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 1. İşe Giriş Evrakları
+  questions:
+  - İşe girişte hangi belgeler gerekli?
+  - Eksik evrak kaç gün içinde tamamlanmalı?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 2. İlk Gün Akışı
+  questions:
+  - İlk gün kaçta başlıyor?
+  - İlk gün hangi eğitim veriliyor?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 3. Deneme Süresi
+  questions:
+  - Deneme süresi ne kadar?
+  - Deneme süresi uzatılabilir mi?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 4. Mentorluk Programı
+  questions:
+  - Mentor ile ne sıklıkla görüşülür?
+  - Mentorluk programı kaç ay sürer?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 5. Zorunlu Eğitimler
+  questions:
+  - Zorunlu eğitimler kaç gün içinde tamamlanmalı?
+  - İş sağlığı eğitimi kaç yılda bir tekrarlanır?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 6. Hesap ve Erişim Açılışı
+  questions:
+  - E-posta hesabı ne zaman aktif olur?
+  - Depo ve üretim erişimi ne zaman açılır?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 7. İlk 90 Gün Hedefleri
+  questions:
+  - 30. günde ne bekleniyor?
+  - 90. günde ne bekleniyor?
+- file: 04-ise-giris-ve-oryantasyon.md
+  section: 8. İşten Ayrılış
+  questions:
+  - Kullanılmayan yıllık izin ne olur?
+  - Zimmetli ekipman ne zaman teslim edilir?
