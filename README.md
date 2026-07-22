@@ -16,7 +16,7 @@ API calls.
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-[![Tests](https://img.shields.io/badge/tests-19%20pytest%20%C2%B7%208%20vitest-brightgreen)](#verification)
+[![Tests](https://img.shields.io/badge/tests-50%20pytest%20%C2%B7%2019%20vitest-brightgreen)](#verification)
 [![Ruff](https://img.shields.io/badge/ruff-clean-D7FF64?logo=ruff&logoColor=black)](#verification)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows-lightgrey)](#quick-start)
 [![External APIs](https://img.shields.io/badge/external%20APIs-none-success)](#security-and-privacy)
@@ -58,6 +58,9 @@ premium**. The report states exactly how much that premium is.
 |---|---|
 | **Grounded answers** | Every answer ships with the passages it used and their cosine similarity scores. Both the score and the text are on screen — no "trust me". |
 | **Refusal over invention** | Two layers of defence: a similarity threshold (0.46) and the system prompt. Even when an out-of-scope question clears the threshold, the model declines — confirmed six times across two models × three runs. |
+| **Retrieval measured, not assumed** | A gold-labelled harness scores retrieval on its own — where the answering passage ranks, and whether it reaches the model at all. It found two questions the answer-quality benchmark scored as passes. |
+| **Two-armed retrieval** | A BM25 arm recovers passages the vector search ranks too low, and can only *add* to what the vector arm already found. Dense results, their order and the refusal guarantee are untouched by construction. |
+| **Answerable follow-ups** | The chips under an answer are written at ingest and reviewed by hand, so every one of them has a passage behind it. No extra model call, no suggestion the assistant would then refuse. |
 | **Live model comparison** | Switch models in the header and re-ask the same question. The comparison is a usable feature, not a table in a report. |
 | **Per-model interface** | The two models carry two distinct visual languages — colour, corner radius, elevation, brand mark. You can tell which one you are on without reading a label. |
 | **Contamination-aware benchmarks** | The harness unloads foreign models from Ollama before a run and watches for new ones during it. Two runs were invalidated this way instead of quietly reaching the report. |
@@ -280,15 +283,24 @@ cd frontend && npm run typecheck && npm run lint && npm test && npm run build
 
 ## Known limitation
 
-Stated plainly: for the question **"How many days is paternity leave?"** the
-chunk that literally contains the answer ranks 12th of 37 (score 0.419), never
-reaches the top-4, and the system declines the question. This is dense
-retrieval's classic vocabulary-mismatch problem; the standard fix is hybrid
-search (BM25 + vector).
+For the question **"How many days is paternity leave?"** the chunk that
+literally contains the answer used to rank 12th of 37 (score 0.419), never reach
+the top-4, and get declined. That one is fixed: a BM25 arm now carries it to the
+model on the strength of a word that appears in exactly one chunk of the corpus.
+Questions whose answer reaches the model went from 17/19 to 18/19, with no
+change to any other question's passages and nothing added to out-of-scope
+questions.
 
-It was left unfixed because rebuilding the index would invalidate six benchmark
-runs and the threshold calibration. It is the first thing to do if this work
-continues.
+The instrument built to measure that fix found a second case, and it is still
+open. **"Is unused leave carried over?"** — the answering passage ranks 5th at
+score 0.520, *above* the threshold, so no amount of threshold tuning would ever
+have surfaced it; only a rank-aware metric could. BM25 does not rescue it
+either: the question says *devri*, the document says *devredilir*. Turkish
+agglutination defeats exact token matching, and fixed-length prefix truncation
+does not separate the cases cleanly. The right fix is a Turkish stemmer, and it
+was not added without first measuring what it does to out-of-scope leakage.
+
+Details and numbers: research report §9.9 and §9.10.
 
 ## Project layout
 
@@ -303,19 +315,27 @@ backend/
     config.py        Settings from environment variables (nothing hardcoded)
     chunking.py      Markdown chunking that preserves heading hierarchy
     ingest.py        Chunk → embed → write to ChromaDB
-    retrieval.py     Vector search + similarity threshold
+    retrieval.py     Vector search + similarity threshold + BM25 arm
+    lexical.py       BM25 word search, Turkish-aware tokenizer
+    suggestions.py   Reviewed follow-up questions, keyed by passage
+    gen_suggestions.py  Drafts those questions for a human to review
     llm.py           Ollama HTTP client, retry + streaming
     rag.py           Retrieve → assemble prompt → stream answer
     api.py           FastAPI endpoints (SSE)
     prompts/         Prompt templates (not embedded in code)
-  bench/             Benchmark and threshold-calibration tooling
+  bench/
+    run_bench.py         Model comparison: speed, memory, answer quality
+    eval_retrieval.py    Retrieval quality: Recall@4, MRR, did it reach the model
+    calibrate_threshold.py  Threshold sweep over the labelled question set
   tests/             pytest unit tests
 frontend/
   src/
     lib/api.ts       Typed SSE client
     lib/modelSkin.ts Per-model visual identity
     components/      Chat, source cards, benchmark panel
-data/kb/             Fictional HR documents (the knowledge base)
+data/
+  kb/                Fictional HR documents (the knowledge base)
+  suggested-questions.yaml  Follow-up chips — generated, then reviewed by hand
 scripts/             dev.sh · dev.bat — bring both servers up together
 ```
 

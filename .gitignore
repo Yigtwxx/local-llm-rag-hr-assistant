@@ -5,7 +5,7 @@
 *.key
 secrets/
 
-# Source assignment brief — not our work to redistribute
+# Source reference documents — not ours to redistribute
 *.pdf
 
 # Working notes from the brainstorming/planning skills — not part of the deliverable

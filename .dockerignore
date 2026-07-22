@@ -9,7 +9,7 @@
 *.key
 secrets/
 
-# Source assignment brief — not ours to redistribute
+# Source reference documents — not ours to redistribute
 *.pdf
 
 # Python

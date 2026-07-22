@@ -28,8 +28,9 @@ rewritten.** Do not update one in isolation.
 ```
 backend/app/      FastAPI app: api, rag, retrieval, chunking, llm, config
 backend/app/prompts/  System and answer prompts (Turkish) — never inline these in code
-backend/bench/    Benchmark harness + calibration; results in bench/results/
+backend/bench/    Benchmark harness, retrieval eval, calibration; results in bench/results/
 data/kb/          Turkish HR knowledge base (Markdown) — the only corpus
+data/suggested-questions.yaml  Follow-up chips: generated, reviewed by hand, committed
 docs/             Reports, slides, UI screenshots
 frontend/src/     UI; lib/modelSkin.ts drives the per-model visual identity
 scripts/dev.sh    Runs backend + frontend together (dev.bat on Windows)
@@ -44,6 +45,8 @@ uv sync
 uv run python -m app.ingest          # build the vector index — required before first run
 uv run uvicorn app.api:app --reload
 uv run pytest
+uv run python -m bench.eval_retrieval --output <name>.json   # retrieval quality
+uv run python -m app.gen_suggestions # draft follow-up chips → review → re-ingest
 uv run ruff check . && uv run ruff format --check .
 
 # Frontend (from frontend/)
@@ -88,6 +91,33 @@ pytest green, `tsc -b` clean, vitest green, `npm run build` clean.
   prompt — verified across two models × three runs.
 - Changing the knowledge base, chunking or the embedding model invalidates the
   threshold. Re-run `bench/calibrate_threshold.py`.
+- **Retrieval has two arms and only one of them may change behaviour.** The
+  dense arm (cosine ≥ 0.46, capped at `top_k`) is frozen — same floor, same cap,
+  same order. The BM25 arm in `app/lexical.py` may only *append*. That is what
+  makes the change non-regressive by construction rather than by hope; 18 of 19
+  labelled questions retrieve byte-identical passages to the vector-only design.
+- **The lexical arm never fires when the dense arm found nothing.** A question
+  that clears no passage is refused without a generation call, and word matching
+  must not turn that hard refusal into "let the model decide" — 7 of the 9
+  out-of-scope questions land there. See `Retriever.retrieve_with_neighbours`.
+- **No RRF or score fusion.** Fusion reorders the dense top-4 among themselves,
+  which changes generated output under `temperature=0` + fixed seed for
+  questions that already answered correctly. There is no evidence BM25 orders
+  them better, so that is a cost with no measured benefit.
+- The lexical gate is **rarity**, not coverage: the IDF of the rarest query word
+  the passage contains, over the corpus maximum. An earlier coverage metric
+  dropped query words absent from the corpus and so scored an out-of-scope
+  question 1.000 on filler alone. `test_filler_words_alone_never_reach_the_gate`
+  locks that in.
+- **Measure retrieval before touching it.** `bench/eval_retrieval.py` scores
+  Recall@4, MRR and whether the answering passage reaches the model at all;
+  `calibrate_threshold.py` cannot see rank-level failures and missed two.
+  Gold labels are `file` + heading path, never `chunk_id` (a content hash).
+  Always record a baseline first, and compare `delivered_chunks` per question.
+- Follow-up chips come from `data/suggested-questions.yaml`, which is generated
+  by `app/gen_suggestions.py` and then **read by a human** before being
+  committed. Ingest reads the file, never the model. Do not skip the review: of
+  74 drafts, 20 were rewritten and one was answerable nowhere in the corpus.
 - `qwen3.5` has thinking on by default, `gemma4` does not. Every call sends
   `think=False` explicitly; without it the speed comparison is meaningless.
 
@@ -110,6 +140,20 @@ pytest green, `tsc -b` clean, vitest green, `npm run build` clean.
   backend is resolvable, then caches its first IP across restarts.
 - `proxy_buffering off` in `frontend/nginx.conf` is what keeps `/api/chat`
   streaming. Without it the answer arrives as one block and the UI looks frozen.
+- Security headers live in `frontend/security-headers.conf`. nginx inherits
+  `add_header` only into blocks that declare none of their own, so **every**
+  location that sets a header of its own must `include` the snippet — otherwise
+  it silently serves those responses unprotected. `location /assets/` is the one
+  that does today.
+- The `/api/` proxy forwards `$uri` (decoded and normalised), not `$request_uri`,
+  so what the backend sees matches what the location matched. A route whose path
+  contains a space or a non-ASCII character would break on the decoding; revisit
+  that line before adding one.
+- The CSP is `script-src 'self'` with no hashes, which is why the pre-paint theme
+  script sits in `frontend/public/theme-init.js` instead of inline in
+  `index.html`. It still has to stay in step with `useTheme` in `src/App.tsx`.
+- Base image tags are pinned to exact patch versions in both Dockerfiles
+  (including `ghcr.io/astral-sh/uv`). Patch bumps are manual and deliberate.
 - The index lives in the `chroma-storage` volume; the entrypoint builds it on
   first start only. After changing the knowledge base, chunking or the embedding
   model, run `docker compose down -v` — otherwise the stale index survives.
@@ -163,15 +207,23 @@ including in `scripts/`.
 
 ## Known limitation
 
-"Babalık izni kaç gün?" — the chunk containing the answer ranks 12th of 37
-(score 0.419) and never reaches top-4, so the system refuses. This is dense
-retrieval's vocabulary-mismatch problem; the fix is hybrid search (BM25 +
-vector). It was left unfixed because rebuilding the index would invalidate six
-benchmark runs and the threshold calibration. Documented honestly in report
-§9.9. **If work continues, this is the first task.**
+"Babalık izni kaç gün?" is fixed — the BM25 arm carries the answering passage to
+the model even though it still ranks 12th at 0.419. The stated reason for
+postponing that fix (rebuilding the index would invalidate six benchmark runs)
+turned out to be wrong: BM25 needs no re-embedding, so the chunks and vectors
+never changed and every generation number in §9.1–9.8 still holds.
+
+**"İzin devri var mı?" is open, and it is the first task if work continues.**
+The answering passage (`1.4 Devir Kuralı`) ranks 5th at score 0.520 — *above*
+the threshold, so no threshold tuning could ever have found it; only the
+rank-aware metric in `bench/eval_retrieval.py` did. BM25 does not rescue it: the
+question says "devri", the document says "devredilir". Fixed-length prefix
+truncation does not separate the cases either — "izni"/"izin" involves vowel
+drop. The fix is a Turkish stemmer, and it must be measured against out-of-scope
+leakage before it ships, exactly as the lexical arm was. Report §9.10.
 
 ## Secrets
 
 Never hardcode credentials. All configuration goes through environment
-variables or `.env` (see `.env.example`). `.env` and the source assignment PDF
+variables or `.env` (see `.env.example`). `.env` and the source reference PDF
 are gitignored and must stay that way.
