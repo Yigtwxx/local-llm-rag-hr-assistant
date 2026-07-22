@@ -1,4 +1,4 @@
-import { Cpu, Database, ShieldCheck } from 'lucide-react';
+import { Brain, Database, ShieldCheck } from 'lucide-react';
 import type { HealthResponse } from '@/lib/types';
 
 interface StatusBarProps {
@@ -13,7 +13,7 @@ function Detail({
   children,
   mono = false,
 }: {
-  icon: typeof Cpu;
+  icon: typeof Brain;
   children: React.ReactNode;
   mono?: boolean;
 }) {
@@ -86,7 +86,7 @@ export function StatusBar({ health, embeddingModel, unreachable }: StatusBarProp
       <Detail icon={Database}>{health.indexed_chunks} parça indeksli</Detail>
 
       {embeddingModel && (
-        <Detail icon={Cpu} mono>
+        <Detail icon={Brain} mono>
           {embeddingModel}
         </Detail>
       )}
