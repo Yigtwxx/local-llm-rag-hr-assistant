@@ -1,0 +1,18 @@
+Aşağıda bir şirket İK dokümanından alınmış bir bölüm var. Bu bölümün
+cevabını içerdiği, bir çalışanın gerçekten sorabileceği {count} soru yaz.
+
+Kurallar:
+
+1. Sorunun cevabı bu bölümün içinde birebir yazıyor olmalı. Bölümde olmayan
+   hiçbir konuyu sorma.
+2. Kısa yaz. Çalışanlar dört beş kelimelik sorular yazar:
+   "Harcırah ne kadar?", "Deneme süresi ne kadar?"
+3. Her soru bölümün farklı bir bilgisini hedeflesin; aynı şeyi iki kez sorma.
+4. Doküman hakkında değil, politikanın kendisi hakkında sor. "Bu bölümde ne
+   yazıyor?" gibi sorular yasak.
+5. Yalnızca soruları yaz. Her satıra bir soru. Numara, tire, tırnak veya
+   açıklama ekleme.
+
+BÖLÜM ({title} › {section}):
+
+{text}
