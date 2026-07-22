@@ -112,4 +112,32 @@ describe('ChatPanel', () => {
     expect(question).toBe('3 yıldır çalışan birinin yıllık izin hakkı kaç gün?');
     expect(model).toBe('gemma4:12b');
   });
+
+  it('cancels a streaming answer on Escape', async () => {
+    const user = userEvent.setup();
+    const abort = vi.fn();
+    streamChatMock.mockImplementation(() => abort);
+
+    renderPanel();
+    await user.click(screen.getByRole('button', { name: /yıllık izin hakkı/i }));
+    lastHandlers().onToken('Yıllık izniniz');
+
+    await user.keyboard('{Escape}');
+
+    expect(abort).toHaveBeenCalled();
+  });
+
+  it('retries a failed answer with the same question and model', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole('button', { name: /yıllık izin hakkı/i }));
+    lastHandlers().onError('Bağlantı kurulamadı.');
+
+    await user.click(await screen.findByRole('button', { name: 'Tekrar dene' }));
+
+    const [question, model] = streamChatMock.mock.calls.at(-1) ?? [];
+    expect(question).toBe('3 yıldır çalışan birinin yıllık izin hakkı kaç gün?');
+    expect(model).toBe('qwen3.5:9b');
+  });
 });
