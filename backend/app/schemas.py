@@ -1,5 +1,7 @@
 """Pydantic models shared by the ingestion pipeline and the HTTP API."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -12,10 +14,13 @@ class Chunk(BaseModel):
     doc_title: str
     section: str
     token_estimate: int
+    # Reviewed follow-up questions this passage answers, attached at ingest.
+    # Empty when `data/suggested-questions.yaml` has no entry for it.
+    suggested_questions: list[str] = Field(default_factory=list)
 
 
 class RetrievedChunk(BaseModel):
-    """A chunk returned by vector search, with its relevance score."""
+    """A chunk returned by retrieval, with its relevance score."""
 
     chunk_id: str
     text: str
@@ -23,6 +28,15 @@ class RetrievedChunk(BaseModel):
     doc_title: str
     section: str
     score: float = Field(description="Cosine similarity in [0, 1]; higher is closer.")
+    matched_by: Literal["dense", "lexical"] = Field(
+        default="dense",
+        description=(
+            "Which arm of retrieval admitted this chunk. 'lexical' means the "
+            "cosine score alone would not have surfaced it and a rare word did, "
+            "so the score shown next to it is expected to look low."
+        ),
+    )
+    suggested_questions: list[str] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):
