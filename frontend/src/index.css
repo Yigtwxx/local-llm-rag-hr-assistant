@@ -217,13 +217,19 @@
 
 .dark .skin-secondary,
 .dark.skin-secondary {
-    --primary: oklch(0.56 0.1 195);
+    /* 0.52, not the 0.56 this started at: `--primary` is the fill behind the
+       user's own question, and at 0.56 white text on it measured 4.3:1 —
+       under WCAG AA for 14px. The dark base skin already sits at 0.52 and
+       passes, so matching it keeps the two skins equally legible rather than
+       making the teal one a step lighter for no stated reason. */
+    --primary: oklch(0.52 0.1 195);
     --primary-foreground: oklch(0.99 0 0);
     --secondary-foreground: oklch(0.96 0.005 195);
     --accent: oklch(0.3 0.035 195);
     --accent-foreground: oklch(0.9 0.04 195);
     --ring: oklch(0.6 0.09 195);
-    --sidebar-primary: oklch(0.56 0.1 195);
+    /* Kept in step with `--primary` above. */
+    --sidebar-primary: oklch(0.52 0.1 195);
     --sidebar-accent: oklch(0.3 0.035 195);
     --sidebar-accent-foreground: oklch(0.9 0.04 195);
     --sidebar-ring: oklch(0.6 0.09 195);
