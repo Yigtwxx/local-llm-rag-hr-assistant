@@ -2,9 +2,8 @@
 
 **Hazırlayan:** Yiğit Erdoğan
 **Tarih:** 22 Temmuz 2026
-**Kapsam:** Staj dokümanının 11. bölümünde istenen bitirme görevi — şirket
-dokümanlarını yanıtlayan, dışarıya hiçbir veri göndermeyen lokal soru-cevap
-prototipi.
+**Kapsam:** Şirket dokümanlarındaki soruları yanıtlayan, dışarıya tek bir veri
+bile göndermeyen lokal bir soru-cevap prototipi.
 
 Ölçüm metodolojisi ve donanım araştırması ayrı dosyadadır:
 [`arastirma-raporu.md`](./arastirma-raporu.md). Kurulum adımları için
@@ -14,13 +13,14 @@ prototipi.
 
 ## 1. Problem
 
-Bir çalışanın "babalık izni kaç gün?" sorusuna cevap bulması bugün İK'ya
-sorması ya da doğru PDF'i açıp taraması demektir. Bu soruyu ChatGPT'ye sormak
-ise şirketin iç yönetmeliğini üçüncü bir tarafa göndermek anlamına gelir —
-İK dokümanları maaş bantları, izin hakları ve prosedürler içerir.
+Bir çalışan "babalık izni kaç gün?" diye merak ettiğinde bugün iki seçeneği
+var: İK'ya sormak ya da doğru PDF'i bulup içinde aramak. Üçüncü bir yol gibi
+duran "ChatGPT'ye soruvereyim" ise aslında şirketin iç yönetmeliğini başka
+birinin sunucusuna göndermek demek — o dokümanların içinde maaş bantları, izin
+hakları ve prosedürler duruyor.
 
-Kurulan sistem bu ikilemi ortadan kaldırır: sorular da dokümanlar da makineden
-çıkmaz. Ağ bağlantısı kesilse bile sistem çalışmaya devam eder.
+Kurulan sistem bu ikilemi ortadan kaldırıyor: ne soru ne de doküman makinenin
+dışına çıkıyor. İnternet kablosunu çekseniz bile çalışmaya devam ediyor.
 
 ## 2. Sistem nasıl çalışıyor?
 
@@ -30,18 +30,29 @@ Soru
       └─> ChromaDB · kosinüs benzerliği · en iyi 4 parça
            └─> Benzerlik eşiği (0,46)
                 ├─ hiçbiri geçemedi ──> "Bu bilgi dokümanlarda yok"  (model hiç çağrılmaz)
-                └─ geçenler ──> Sistem prompt'u + bulunan parçalar
-                                 └─> LLM (qwen3.5:9b | gemma4:12b)
-                                      └─> Akışlı cevap + kaynak kartları
+                └─ geçenler
+                     └─> BM25 kelime araması (+0,03 ms)
+                          nadir bir kelime birebir eşleşiyorsa 1 parça daha ekler
+                           └─> Sistem prompt'u + bulunan parçalar
+                                └─> LLM (qwen3.5:9b | gemma4:12b)
+                                     └─> Akışlı cevap + kaynak kartları
+                                          └─> Takip sorusu çipleri (ek model çağrısı yok)
 ```
 
-Sistemin ayırt edici tarafı **eşik kontrolünün modelden önce** gelmesidir.
-Cevabı dokümanlarda olmayan bir soru sorulduğunda modelden "uydurma" diye rica
-edilmez; model o soruyu hiç görmez. Bu, halüsinasyon riskini modelin iyi
-niyetine değil mimariye bağlar.
+İşin can alıcı ayrıntısı şu: **eşik kontrolü modelden önce geliyor.** Cevabı
+dokümanlarda olmayan bir soru geldiğinde modele "lütfen uydurma" diye rica
+edilmiyor; model o soruyu zaten hiç görmüyor. Böylece uydurma riski modelin iyi
+niyetine değil, sistemin kurgusuna bağlanmış oluyor.
 
-İkinci savunma katmanı sistem prompt'udur (`app/prompts/system_tr.txt`):
-eşiği kıl payı geçen zayıf bir bağlamda modelin boşluk doldurmasını engeller.
+İkinci savunma hattı sistem prompt'u (`app/prompts/system_tr.txt`): eşiği kıl
+payı geçen zayıf bir bağlam geldiğinde modelin boşlukları kendi kafasından
+doldurmasını engelliyor.
+
+Şemadaki BM25 kolu sonradan eklendi ve bilinçli olarak **dar** tutuldu. Yalnızca
+vektör araması zaten en az bir parça bulduğunda çalışıyor; hiçbir parça eşiği
+geçemediyse hiç devreye girmiyor. Yani yukarıdaki "model hiç çağrılmaz" garantisi
+aynen duruyor — kelime eşleşmesi sert reddi yumuşak redde çeviremiyor. Neden
+böyle kurulduğu ve neyi düzelttiği araştırma raporu Bölüm 9.10'da.
 
 ## 3. Bileşenler ve seçim gerekçeleri
 
@@ -57,21 +68,22 @@ eşiği kıl payı geçen zayıf bir bağlamda modelin boşluk doldurmasını en
 
 ### Neden LangChain / LlamaIndex kullanılmadı?
 
-Bütün RAG hattı yaklaşık 400 satır. Bir çerçeve bu satırları gizlerdi ama
-karşılığında iki şey kaybettirirdi: ölçüm noktalarına doğrudan erişim (TTFT,
-`eval_count`, retrieval süresi) ve prompt'un modele tam olarak hangi biçimde
-gittiğinin görünürlüğü. Benchmark'ın geçerliliği "her modele baytı baytına aynı
-istek" varsayımına dayandığı için bu görünürlük pazarlık konusu değildi.
+Bütün RAG hattı topu topu 400 satır. Hazır bir kütüphane bu satırları gözden
+gizlerdi, ama karşılığında iki şeyi de götürürdü: ölçüm noktalarına doğrudan
+erişim (TTFT, `eval_count`, arama süresi) ve prompt'un modele tam olarak hangi
+biçimde gittiğini görebilmek. Benchmark'ın bütün geçerliliği "her modele harfi
+harfine aynı istek gidiyor" varsayımına dayandığı için bu görünürlük pazarlık
+konusu değildi.
 
-Üretim ölçeğinde — çok kaynaklı ingest, yeniden sıralama (reranking), araç
-kullanımı — tercih farklı olurdu.
+Gerçek bir üretim sisteminde — birden fazla veri kaynağı, yeniden sıralama
+(reranking), araç kullanımı — tercih büyük ihtimalle farklı olurdu.
 
 ### Neden ChromaDB?
 
-Qdrant ve pgvector kurumsal ölçekte daha uygun seçeneklerdir. Bu prototipte
-37 parçalık bir indeks var; ayrı bir servis veya Docker katmanı, kazandırdığı
-hiçbir şey karşılığında kurulum yükü getirirdi. Vektör şeması standart olduğu
-için taşınma maliyeti düşüktür.
+Kurumsal ölçekte Qdrant ya da pgvector daha doğru tercihler. Ama burada elimizde
+37 parçalık bir indeks var; ayrı bir servis veya Docker katmanı, karşılığında
+hiçbir şey kazandırmadan kurulum yükü getirirdi. Vektör şeması standart olduğu
+için ileride taşımak da zor değil.
 
 ## 4. Bilgi tabanı ve parçalama
 
@@ -79,10 +91,11 @@ Bilgi tabanı, kurgusal bir şirket (NovaTek Yazılım A.Ş.) için yazılmış 
 Türkçe İK dokümanıdır — izin politikası, çalışma düzeni, masraf ve yan haklar,
 işe giriş ve oryantasyon. Gerçek bir şirketin belgesi kullanılmamıştır.
 
-Parçalama (`app/chunking.py`) markdown başlık hiyerarşisini takip eder:
-her parça hangi belgenin hangi başlığından geldiğini metadata olarak taşır ve
-tablolar bölünmez. Bunun nedeni pratik: "harcırah günlük 750 TL" bilgisi bir
-tablo satırındadır ve satır ortadan bölünürse parça anlamını kaybeder.
+Parçalama (`app/chunking.py`) markdown başlık hiyerarşisini takip ediyor: her
+parça hangi belgenin hangi başlığından geldiğini yanında taşıyor ve tablolar
+ortadan bölünmüyor. Sebebi gayet pratik: "harcırah günlük 750 TL" bilgisi bir
+tablo satırında duruyor; o satır ikiye bölünürse parça anlamını tamamen
+kaybediyor.
 
 | Ayar | Değer |
 |---|---|
@@ -93,26 +106,27 @@ tablo satırındadır ve satır ortadan bölünürse parça anlamını kaybeder.
 
 ## 5. Benzerlik eşiğinin kalibrasyonu
 
-Eşik değeri sezgiyle değil ölçümle belirlendi (`bench/calibrate_threshold.py`).
-28 etiketli soru — 19 kapsam içi, 9 kapsam dışı — sisteme sorulur ve her birinin
-en yüksek benzerlik skoru kaydedilir.
+Eşik değeri kafadan atılmadı, ölçülerek bulundu
+(`bench/calibrate_threshold.py`). 28 etiketli soru — 19 tanesinin cevabı
+dokümanlarda var, 9 tanesinin yok — sisteme tek tek soruluyor ve her birinin en
+yüksek benzerlik skoru kaydediliyor.
 
 Bu kalibrasyon iki kez yapıldı ve ikincisi birincisini çürüttü. İlk turda
-yalnızca benchmark setinin uzun, düzgün kurulmuş soruları kullanıldı; sonuç
-0,52 ve iki küme arasında 0,061'lik tertemiz bir boşluktu. Ancak o boşluk
-soru üslubunun bir eseriydi: gerçek bir çalışan "Yurt içi seyahatte günlük
-yemek harcırahı ne kadar?" diye yazmaz, **"Harcırah ne kadar?"** diye yazar.
-Kısa sorular sete eklendiğinde tablo değişti:
+yalnızca benchmark setindeki uzun, düzgün kurulmuş sorular kullanıldı; sonuç
+0,52 çıktı ve iki küme arasında 0,061'lik tertemiz bir boşluk vardı. Ama o
+boşluk sorunun yazılış biçiminden geliyordu: gerçek bir çalışan "Yurt içi
+seyahatte günlük yemek harcırahı ne kadar?" diye yazmıyor, **"Harcırah ne
+kadar?"** diye yazıyor. Kısa sorular sete eklenince tablo değişti:
 
 | | Aralık |
 |---|---|
 | Kapsam içi (19 soru) | **0,468** – 0,708 |
 | Kapsam dışı (9 soru) | 0,278 – **0,501** |
 
-İki küme artık örtüşüyor. En düşük kapsam içi soru ("Harcırah ne kadar?" —
-0,468) en yüksek kapsam dışı sorunun (hisse opsiyonu — 0,501) *altında*
-kalıyor. Bu, tek bir eşiğin ikisini birden ayıramayacağı anlamına gelir; geriye
-hangi hatanın satın alınacağı seçimi kalır:
+İki küme artık iç içe geçmiş durumda. En düşük kapsam içi soru ("Harcırah ne
+kadar?" — 0,468), en yüksek kapsam dışı sorunun (hisse opsiyonu — 0,501)
+*altında* kalıyor. Yani tek bir eşikle bu ikisini temiz biçimde ayırmak mümkün
+değil; geriye "hangi hatayı göze alıyoruz?" sorusu kalıyor:
 
 | Eşik | Kaçırılan doğru soru | Sızan kapsam dışı |
 |---|---|---|
@@ -121,32 +135,47 @@ hangi hatanın satın alınacağı seçimi kalır:
 | 0,48 | 2/19 | 1/9 |
 | 0,52 | 4/19 | 0/9 |
 
-Seçim 0,46: sıfır kaçırma sağlayan **en yüksek** değer. Gerekçe, iki hatanın
-simetrik olmamasıdır. Cevabı dokümanda yazan bir soruyu reddetmek nihai bir
-hatadır — kullanıcı "bu sistem bilmiyor" diye öğrenir ve bir daha sormaz.
-Eşiği geçen kapsam dışı bir soru ise nihai değildir; ikinci savunma katmanına,
-sistem prompt'una düşer ve orada reddedilebilir. Bu nedenle eşik, yakalanabilir
-hatayı yakalanamaz hataya tercih edecek biçimde ayarlanmıştır.
+Seçim 0,46 oldu: hiçbir doğru soruyu kaçırmayan **en yüksek** değer. Gerekçesi
+şu: bu iki hatanın ağırlığı aynı değil. Cevabı dokümanda yazan bir soruyu
+reddetmek geri dönüşü olmayan bir hata — kullanıcı "bu sistem bilmiyormuş" diye
+öğreniyor ve bir daha sormuyor. Eşiği geçip içeri sızan kapsam dışı bir soru
+ise henüz kaybedilmiş değil; ikinci savunma hattına, sistem prompt'una düşüyor
+ve orada reddedilebiliyor. Kısacası eşik, sonradan yakalanabilecek hatayı
+yakalanamayacak hataya tercih edecek şekilde ayarlandı.
 
-Somut olarak 0,52'de sistem şu dört soruyu — dördünün de cevabı dokümanlarda
-olduğu hâlde — reddediyordu: *"Harcırah ne kadar?"*, *"Haftada kaç gün
-ofisteyim?"*, *"Babalık izni kaç gün?"*, *"Eğitim bütçesi ne kadar?"*.
+Somut örnek: 0,52'deyken sistem şu dört soruyu — dördünün de cevabı
+dokümanlarda yazdığı hâlde — geri çeviriyordu: *"Harcırah ne kadar?"*,
+*"Haftada kaç gün ofisteyim?"*, *"Babalık izni kaç gün?"*, *"Eğitim bütçesi ne
+kadar?"*.
 
-Buradan çıkan asıl ders eşik değerinin kendisi değildir: **bir kalibrasyon
-setinin, ölçtüğü sistemin karşılaşacağı girdiyi temsil etmesi gerekir.**
-Doküman seti veya kullanıcı üslubu değişirse kalibrasyon yeniden
-çalıştırılmalıdır; eşik veri setine bağlıdır, evrensel bir sabit değildir.
+Buradan çıkan asıl ders eşiğin kendisi değil: **bir kalibrasyon seti, sistemin
+gerçekte karşılaşacağı soruları temsil etmiyorsa ölçtüğü şey de gerçek
+değildir.** Doküman seti ya da kullanıcıların soru sorma biçimi değişirse
+kalibrasyon yeniden çalıştırılmalı; 0,46 bu veri setine ait bir sayı, evrensel
+bir sabit değil.
 
-> **Metriğin sınırı.** Yukarıdaki tablodaki "kaçırılan doğru soru" sütunu,
-> sorunun eşiği geçip geçmediğini ölçer — getirilen parçanın cevabı *içerip
-> içermediğini* ölçmez. Bu ayrım önemlidir: 0,46'da "0/19 kaçırma" yazıyor,
-> ancak elle yapılan denemede bir sorunun eşiği geçtiği hâlde doğru parçaya
-> ulaşamadığı görüldü (Bölüm 8, madde 2).
+> **Bu metriğin göremediği şey.** Tablodaki "kaçırılan doğru soru" sütunu
+> yalnızca sorunun eşiği geçip geçmediğine bakıyor; gelen parçanın içinde cevap
+> *var mı yok mu* ona bakmıyor. Aradaki fark önemli: 0,46'da "0/19 kaçırma"
+> yazıyor, ama gerçekte iki soru doğru parçaya ulaşamıyordu.
+
+Bu körlük sonradan kapatıldı. `bench/eval_retrieval.py` her kapsam içi soruya
+cevabı fiilen içeren parçayı **gold** olarak etiketliyor ve üç şeyi ayrı ayrı
+ölçüyor: gold parçanın sıralamadaki yeri, ilk 4'e girip girmediği (Recall@4) ve
+modele fiilen ulaşıp ulaşmadığı. Bu araç kurulur kurulmaz eşiğin hiç göremediği
+bir vaka çıktı — *"İzin devri var mı?"*, skoru 0,520 ile eşiğin **üstünde** ama
+gold parça 5. sırada olduğu için modele hiç varmıyor.
+
+Eşik değeri (0,46) bu çalışmada **değiştirilmedi.** Değiştirmek, ölçümle gelmiş
+bir sayıyı ve yukarıdaki bütün gerekçeyi geçersiz kılardı. Bunun yerine aramaya
+kelime tabanlı ikinci bir kol eklendi; kol yalnızca *ekleme* yaptığı için
+tablodaki iki hata sütunu da olduğu gibi geçerli kalıyor. Ayrıntı ve öncesi/
+sonrası sayıları araştırma raporu Bölüm 9.10'da.
 
 ## 6. Performans özeti
 
-Ayrıntı ve metodoloji araştırma raporu Bölüm 9'dadır. Üç bağımsız temiz koşunun
-özeti:
+Ayrıntılar ve nasıl ölçüldüğü araştırma raporunun 9. bölümünde. Birbirinden
+bağımsız üç temiz koşunun özeti şöyle:
 
 | Metrik | `qwen3.5:9b` | `gemma4:12b` |
 |---|---|---|
@@ -156,104 +185,122 @@ Ayrıntı ve metodoloji araştırma raporu Bölüm 9'dadır. Üç bağımsız te
 | Kalite | 14/14 | 14/14 |
 | Kaynağa sadakat | 11/11 | 11/11 |
 
-Eşik 0,46'ya çekildikten sonra alınan dördüncü temiz koşu bu sayıları bağımsız
-olarak yeniden üretti: 38,07 ve 27,79 tok/s. Toplam altı koşu alındı; ikisi,
-makinede başka bir uygulamanın 23 GB'lık bir model çalıştırması yüzünden
-kirlendi ve harness bunu kendi uyarı mekanizmasıyla yakaladı (araştırma raporu
+Eşik 0,46'ya çekildikten sonra alınan dördüncü temiz koşu aynı sayıları
+bağımsız olarak doğruladı: 38,07 ve 27,79 tok/s. Toplamda altı koşu alındı;
+ikisi, makinede başka bir uygulama 23 GB'lık bir model çalıştırdığı için
+kirlendi — harness bunu kendi uyarı mekanizmasıyla yakaladı (araştırma raporu
 Bölüm 9.4).
 
-Belge arama medyanı ~90 ms; yani kullanıcının beklediği sürenin neredeyse
-tamamı modelin üretim süresidir, arama değil.
+Belge arama medyanı ~90 ms. Yani kullanıcının ekrana bakıp beklediği sürenin
+neredeyse tamamı modelin cevabı yazma süresi; arama kısmı fark edilmiyor bile.
 
-Kalite skorlarının ikisinde de tam çıkması "iki model eşit" demek değildir;
-**test setinin ayırt etme gücünün yetmediği** anlamına gelir (bkz. Bölüm 8).
+İki modelin de kaliteden tam puan alması "bu modeller eşit" demek değil;
+**test setinin ikisini birbirinden ayırt edemediği** anlamına geliyor
+(bkz. Bölüm 8).
+
+Yukarıdaki tablo cevabı ölçüyor; aramanın kendisi ayrı ölçülüyor ve modelden
+bağımsız:
+
+| Arama metriği (19 gold etiketli soru) | Yalnız vektör | + kelime kolu |
+|---|---|---|
+| Recall@4 (sıralama) | 0,895 | 0,895 |
+| **Cevabına ulaşan soru** | **17/19** | **18/19** |
+| Kapsam dışına eklenen parça | — | 0 |
+
+Kelime kolu yoğun aramaya hiç dokunmadığı için Recall@4 aynı kalıyor; değişen
+tek şey, sıralamanın altında kalan doğru parçanın artık modele ulaşabilmesi.
 
 **Eşik düşünce ne oldu?** 0,46'da kapsam dışı kontrol sorularından biri artık
-eşiği geçip modele ulaşıyor — yani o soruda birinci savunma katmanı devrede
-değil. Üç koşuda, iki modelde, altı denemenin altısında da model soruyu
-reddetti ve sistem prompt'undaki cümleyi birebir üretti. İkinci katman ilk kez
-gerçekten sınandı ve tuttu.
+eşiği geçip modele ulaşıyor — o soruda birinci savunma hattı devrede değil.
+Üç koşuda, iki modelde, yani altı denemenin altısında da model soruyu reddetti
+ve sistem prompt'undaki cümleyi kelimesi kelimesine yazdı. İkinci katman ilk
+kez gerçekten sınandı ve tuttu.
 
-**Reasoning modu açılmalı mı? Hayır.** Ayrı bir turda düşünme modu açık
-ölçüldü: ilk cevap süresi 1,9 saniyeden 28,5 saniyeye çıktı, token tüketimi
-4-5 katına ulaştı, kalite ise artmadı — zaten 14/14'tü. Üstelik `qwen3.5`
-varsayılan 1.024 token bütçesinde düşünmeyi bitiremeyip cevaba hiç
-başlayamadı. Etkileşimli bir asistanda bu değiş tokuş savunulamaz; ayrıntı
-araştırma raporu Bölüm 9.7'dedir.
+**Peki düşünme (reasoning) modu açılsın mı? Hayır.** Ayrı bir turda açık hâliyle
+de ölçtük: ilk cevabın gelmesi 1,9 saniyeden 28,5 saniyeye çıktı, token tüketimi
+4-5 katına fırladı, kalite ise yerinde saydı — zaten 14/14'tü, yükseltecek yer
+yoktu. Üstelik `qwen3.5` varsayılan 1.024 token bütçesinde düşünmeyi bitiremeyip
+cevaba hiç başlayamadı. Karşılıklı konuştuğunuz bir asistanda bu takas
+savunulacak gibi değil; ayrıntısı araştırma raporu Bölüm 9.7'de.
 
 ## 7. Gizlilik ve güvenlik
 
-- **Dışarıya giden istek yok.** Tüm trafik `localhost:11434` (Ollama) ve
-  `localhost:8000` (API) arasındadır. Ağ kablosu çekilse sistem çalışır.
-- **Gizli bilgi kaynak kodunda tutulmaz.** Tüm ayarlar ortam değişkeninden
-  okunur (`app/config.py`, `pydantic-settings`); depoda yalnızca
-  `.env.example` bulunur.
-- **Prompt'lar kodda gömülü değildir.** `app/prompts/` altında ayrı metin
-  dosyalarındadır; değiştirmek için kod dağıtımı gerekmez.
-- **Hata mesajları ham API cevabı sızdırmaz.** Ollama hatası kullanıcıya
-  "model çekili mi?" biçiminde döner, istek gövdesi (doküman metni içerebilir)
-  asla yankılanmaz.
+- **Dışarıya giden tek bir istek yok.** Bütün trafik `localhost:11434` (Ollama)
+  ile `localhost:8000` (API) arasında gidip geliyor. Ağ kablosunu çekseniz
+  sistem çalışmaya devam eder.
+- **Gizli bilgi kodun içinde durmuyor.** Bütün ayarlar ortam değişkeninden
+  okunuyor (`app/config.py`, `pydantic-settings`); depoda sadece
+  `.env.example` var.
+- **Prompt'lar koda gömülü değil.** `app/prompts/` altında ayrı metin
+  dosyalarında duruyorlar; birini değiştirmek için kodu yeniden dağıtmaya gerek
+  yok.
+- **Hata mesajları ham API cevabını sızdırmıyor.** Ollama tarafında bir sorun
+  olduğunda kullanıcı "model çekili mi?" tarzında bir mesaj görüyor; isteğin
+  gövdesi (içinde doküman metni olabilir) hiçbir zaman ekrana yansımıyor.
 
 ## 8. Sınırlar
 
-Prototipin bugün yapamadıkları, dürüstçe:
+Prototipin bugün yapamadıkları, olduğu gibi:
 
-1. **Yetkilendirme yok.** Herkes her dokümanı sorgulayabilir. Gerçek bir İK
-   kurulumunda parça bazlı erişim kontrolü (departman, kademe) gerekir.
-2. **Kısa sorularda arama sıralaması yetersiz kalabiliyor — ölçülmüş bir
-   örnek var.** *"Babalık izni kaç gün?"* sorusunda cevabı birebir içeren
-   parça (`Eş doğumu (babalık izni) | 10 iş günü`) 37 parça arasında ancak
-   12. sırada, 0,419 skorla geliyor; ilk sıraya konuyla ilgisiz bir "izin
-   bakiyesi" parçası yerleşiyor. Doğru parça top-4'e giremediği için model
-   cevabı hiç görmüyor ve elindeki bağlama sadık kalarak reddediyor — hata
-   modelde değil, aramada. Aynı soru dokümanın kendi sözcükleriyle
-   sorulduğunda ("Eş doğumu izni kaç gün?") doğru parça 2. sıraya çıkıyor.
-   Bu, yoğun vektör aramasının bilinen kelime dağarcığı uyuşmazlığı
-   sorunudur; standart çözümü hibrit aramadır (BM25 + vektör). Ayrıntı ve
-   sayılar araştırma raporu Bölüm 9.9'da.
-3. **Test seti tavana vurdu.** 14 soru iki modeli ayırt edemiyor — üstelik
-   yukarıdaki kusuru da göremedi, çünkü ölçüm setindeki soruların tamamı uzun
-   ve düzgün kurulmuş. Çok adımlı çıkarım, çelişen kaynaklar, tablo okuma ve
-   **kısa/eksik yazılmış sorular** eklenmeli.
-4. **Kalite ölçümü anahtar kelime tabanlı.** Tekrarlanabilir ve mekaniktir,
-   ama cevabın akıcılığını veya gereksiz uzunluğunu ölçmez.
-5. **Doküman güncelleme akışı manuel.** Yeni doküman eklenince
-   `python -m app.ingest` elle çalıştırılır; izleme/otomatik yeniden indeksleme
-   yoktur.
-6. **Tek kullanıcı varsayımı.** Eşzamanlı yük altında Ollama sıraya alır;
-   çok kullanıcılı kullanım ölçülmemiştir.
+1. **Yetkilendirme yok.** Sisteme giren herkes her dokümanı sorgulayabiliyor.
+   Gerçek bir İK kurulumunda parça bazlı erişim kontrolü (departman, kademe)
+   şart olur.
+2. **Türkçe ekler kelime aramasını hâlâ yenebiliyor.** *"Babalık izni kaç gün?"*
+   vakası kapatıldı: aramaya eklenen BM25 kolu, cevabı birebir içeren parçayı
+   (12. sıra, 0,419 skor) modele ulaştırıyor ve soru artık doğru cevaplanıyor.
+   Ama aynı yöntem *"İzin devri var mı?"* sorusunu kurtaramıyor — soru "devri"
+   diyor, doküman "devredilir". Birebir token eşleşmesi bunları eşleştiremiyor,
+   sabit uzunlukta önek kırpması da temiz ayırmıyor ("izni"/"izin" çiftinde ünlü
+   düşmesi var). Doğru çözüm bir Türkçe gövdeleyici; kapsam dışı sızmaya ne
+   yaptığı ölçülmeden eklenmedi. Sayılar araştırma raporu Bölüm 9.9 ve 9.10'da.
+3. **Test seti tavana vurdu.** 14 soru iki modeli birbirinden ayıramıyor ve
+   yukarıdaki kusurların ikisini de fark edemedi, çünkü setteki soruların hepsi
+   uzun ve düzgün yazılmış. Bu körlüğün bir kısmı kapandı: `eval_retrieval.py`
+   artık aramayı cevaptan ayrı ölçüyor ve gizli kalmış ikinci kusuru o buldu.
+   Ama **cevap** kalitesi tarafı hâlâ tavanda. Sete çok adımlı çıkarım,
+   birbiriyle çelişen kaynaklar ve tablo okuma eklenmeli.
+4. **Kalite ölçümü anahtar kelimeye bakıyor.** Mekanik ve tekrarlanabilir
+   olması iyi, ama cevabın akıcı olup olmadığını ya da gereksiz uzadığını
+   ölçmüyor.
+5. **Doküman güncelleme işi elle yapılıyor.** Yeni doküman eklendiğinde
+   `python -m app.ingest` komutunu kendiniz çalıştırmanız gerekiyor; otomatik
+   izleme veya yeniden indeksleme yok.
+6. **Sistem tek kullanıcıya göre kurgulandı.** Aynı anda birden fazla istek
+   gelirse Ollama bunları sıraya alıyor; çok kullanıcılı kullanım hiç
+   ölçülmedi.
 
 ## 9. Kurumsal öneri
 
-**Donanım.** Belirleyici kısıt bellek değil üretim hızıdır. Seçilen model
-6,3 GB tutuyor; 16 GB unified memory'li bir Mac veya 16 GB VRAM'li bir NVIDIA
-kartı bu iş yükü için yeterlidir. Türkiye fiyatlarıyla (22.07.2026): Mac mini
-M4 24 GB ≈ 77.000 TL, RTX 5060 Ti 16GB'lı hazır bir sistem ≈ 48.000–62.000 TL.
-Ekran kartının tek başına alınması yanıltıcıdır — kart, çalışır bir sistemin
-ancak %60–75'idir.
+**Donanım.** Asıl darboğaz bellek değil, modelin yazma hızı. Seçilen model
+6,3 GB yer kaplıyor; 16 GB unified memory'li bir Mac ya da 16 GB VRAM'li bir
+NVIDIA kartı bu iş için fazlasıyla yeter. Türkiye fiyatlarıyla (22.07.2026):
+Mac mini M4 24 GB ≈ 77.000 TL, RTX 5060 Ti 16GB'lı hazır bir sistem ≈
+48.000–62.000 TL. Bütçeyi sadece ekran kartı üzerinden kurmak yanıltıcı olur —
+kart, çalışır bir sistemin ancak %60–75'i.
 
-**Maliyet gerekçesi kurulamaz — ve bu bilinçli bir tespittir.** Fiyat
-araştırması (araştırma raporu Bölüm 4.4) beklenenin tersini gösterdi: aynı
-sınıftaki bir modeli bulutta çalıştırmak bu kullanım hacminde yılda ~600 TL
-tutuyor; lokal kurulumun yalnızca elektriği 1.700–5.800 TL. Donanımın peşin
-maliyeti hiç sayılmasa bile lokal kurulum bu kıyasta amorti etmiyor. Öneri bu
-nedenle şöyle kurulmalıdır: **lokal çözüm bir tasarruf kalemi değil,
-ölçülebilir bir gizlilik primidir.** Özlük dosyaları, maaş bantları ve
-performans verileri KVKK kapsamındadır; bu veri kümesinde prim kolaylıkla
-haklı çıkar. Genel amaçlı bir sohbet asistanında çıkmaz.
+**Bu işin maliyet gerekçesi tutmuyor — ve bunu bilerek yazıyoruz.** Fiyat
+araştırması (araştırma raporu Bölüm 4.4) beklediğimizin tam tersini gösterdi:
+aynı sınıftaki bir modeli bulutta çalıştırmak bu kullanım hacminde yılda ~600 TL
+tutuyor; lokal kurulumun sadece elektriği 1.700–5.800 TL. Donanımın peşin
+parasını hiç saymasak bile lokal kurulum bu kıyasta kendini amorti etmiyor.
+Dolayısıyla öneri şu cümle üzerine kurulmalı: **lokal çözüm bir tasarruf kalemi
+değil, parası ölçülebilen bir gizlilik primi.** Özlük dosyaları, maaş bantları
+ve performans verileri KVKK kapsamında; bu veri için o primi ödemek kolayca
+savunulur. Genel amaçlı bir sohbet asistanı için savunulmaz.
 
-**Model.** `qwen3.5:9b` birincil; `gemma4:12b` ikinci model olarak sistemde
-kalsın — farklı üretici, çapraz doğrulama imkânı ve kısa cevap tercih edilen
-senaryolar için.
+**Model.** Birincil model `qwen3.5:9b` olsun; `gemma4:12b` de sistemde ikinci
+model olarak kalsın — farklı bir üreticiden geliyor, çapraz kontrol imkânı
+veriyor ve kısa cevap istenen durumlara daha iyi oturuyor.
 
-**Dağıtım.** Şirket içi tek bir sunucuda Ollama + FastAPI; kullanıcılar
-tarayıcıdan bağlanır. Böylece model tek yerde tutulur, her masaüstüne
-kurulmaz.
+**Dağıtım.** Şirket içinde tek bir sunucuda Ollama + FastAPI çalışsın,
+kullanıcılar tarayıcıdan bağlansın. Böylece model tek bir yerde durur, her
+masaüstüne ayrı ayrı kurulmaz.
 
-**Nerede lokal çözüm doğru araç değildir?** Karmaşık çok adımlı akıl yürütme,
-uzun kod üretimi veya yüksek eşzamanlılık gerektiren işlerde 10 GB sınıfı bir
-modelin sınırı hızla görünür. Lokal kurulum, kapsamı belli ve verisi hassas
-işler için doğru araçtır — İK soru-cevabı tam olarak bu tanıma uyar.
+**Peki lokal çözüm nerede yanlış tercih olur?** Karmaşık, çok adımlı akıl
+yürütme; uzun kod üretimi; aynı anda çok sayıda kullanıcı — bu işlerde 10 GB
+sınıfı bir modelin sınırı çok çabuk görünür. Lokal kurulum, kapsamı belli ve
+verisi hassas işler için doğru araç; İK soru-cevabı da tam olarak bu tarife
+uyuyor.
 
 ## 10. Doğrulama
 
@@ -261,13 +308,23 @@ işler için doğru araçtır — İK soru-cevabı tam olarak bu tanıma uyar.
 # Backend
 cd backend
 uv run ruff check . && uv run ruff format --check .   # temiz
-uv run pytest                                          # 19/19
+uv run pytest                                          # 50/50
 
 # Frontend
 cd frontend
-npm run typecheck && npm test && npm run build         # temiz · 5/5 · temiz
+npm run typecheck && npm test && npm run build         # temiz · 19/19 · temiz
 
 # Ölçüm
 cd backend
-uv run python -m bench.run_bench --output run-yeni.json
+uv run python -m bench.run_bench --output run-yeni.json   # model karşılaştırması
+uv run python -m bench.eval_retrieval                     # arama kalitesi
+uv run python -m bench.calibrate_threshold                # eşik taraması
 ```
+
+Takip sorusu çipleri değiştirilecekse sıra şu: `uv run python -m
+app.gen_suggestions` taslakları `data/suggested-questions.yaml`'a yazar, dosya
+**elle gözden geçirilip** commit edilir, sonra `uv run python -m app.ingest`
+indeksi yeniden kurar. Ara adım atlanabilir değil: bu çalışmada üretilen 74
+sorunun 20'si yeniden yazıldı, biri tamamen atıldı (*"Nöbet primi ne kadar?"* —
+doküman primi vaat ediyor ama tutarı hiç yazmıyor, yani asistan kendi önerdiği
+soruyu reddederdi).
