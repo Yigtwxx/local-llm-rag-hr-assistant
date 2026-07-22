@@ -137,6 +137,42 @@ this step is optional.
 
 </details>
 
+## Run with Docker
+
+Two containers — the API and the built UI behind nginx. **Ollama stays on the
+host**: inside a container it cannot reach Metal on macOS, so it would fall back
+to CPU and the numbers below would no longer describe this system.
+
+```bash
+# 1 — Ollama running on the host, with the models pulled (see Quick start)
+ollama serve
+
+# 2 — From the repository root
+docker compose up --build
+```
+
+| | |
+|---|---|
+| <http://localhost:8180> | UI |
+| <http://localhost:8100/docs> | OpenAPI |
+
+The index is built inside the container on first start (a few minutes) and kept
+in the `chroma-storage` volume; later starts take seconds. `docker compose down
+-v` throws it away and forces a rebuild.
+
+Ports 8180 and 8100 were picked to stay clear of 8000/5173, which `dev.sh` uses.
+Override them in `.env`:
+
+```bash
+WEB_PORT=9180
+BACKEND_HOST_PORT=9100
+```
+
+Two notes. Docker is not needed for development — `./scripts/dev.sh` is the
+faster loop, with hot reload on both sides. And **stop the stack before running
+a benchmark** (`docker compose down`): a second container holding a model in
+Ollama contaminates the measurement, which is how runs 8 and 9 were lost.
+
 ## Benchmark results
 
 Apple M4 Pro · 48 GB unified memory · aggregate of three clean runs.
