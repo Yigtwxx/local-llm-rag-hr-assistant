@@ -211,9 +211,22 @@ export function MessageBubble({
 
       <div className="min-w-0 flex-1">
         {message.error ? (
-          <div className="rounded-2xl rounded-tl-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {message.error}
-          </div>
+          <>
+            <div className="rounded-2xl rounded-tl-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {message.error}
+            </div>
+            {/* Without this the error is a dead end: the question has to be
+                typed again from scratch, even though it is right here. */}
+            {message.question && message.model && onReask && (
+              <div className="mt-2">
+                <ActionButton
+                  icon={RefreshCw}
+                  label="Tekrar dene"
+                  onClick={() => onReask(message.question ?? '', message.model ?? '')}
+                />
+              </div>
+            )}
+          </>
         ) : (
           <div
             className={`elevate rounded-2xl rounded-tl-md border px-4 py-3 text-sm ${
