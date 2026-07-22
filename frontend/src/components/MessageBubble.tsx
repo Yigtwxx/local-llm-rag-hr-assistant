@@ -46,6 +46,18 @@ function renderInline(text: string): React.ReactNode[] {
   });
 }
 
+/**
+ * `break-words` on every block that holds model or user text.
+ *
+ * Without it a single unbroken run of characters — an intranet URL is the
+ * realistic one — sets the block's width to its own length. Measured at 3798px
+ * inside a 728px bubble: the text escaped the rounded border, ran across the
+ * page and slid under the sources rail. The table strip is exempt; it scrolls
+ * on its own axis instead, because breaking a table row mid-cell destroys the
+ * alignment that is the only reason it is rendered monospaced.
+ */
+const WRAP = 'break-words';
+
 function AnswerBody({ content }: { content: string }) {
   const lines = content.split('\n');
   const blocks: React.ReactNode[] = [];
@@ -58,7 +70,7 @@ function AnswerBody({ content }: { content: string }) {
         {bullets.map((item, index) => (
           <li key={index} className="flex gap-2.5">
             <span className="avatar-shape mt-[0.55em] size-1.5 shrink-0 bg-primary/50" />
-            <span>{renderInline(item)}</span>
+            <span className={`min-w-0 ${WRAP}`}>{renderInline(item)}</span>
           </li>
         ))}
       </ul>,
@@ -93,7 +105,7 @@ function AnswerBody({ content }: { content: string }) {
     }
 
     blocks.push(
-      <p key={blocks.length} className="my-2 leading-[1.7]">
+      <p key={blocks.length} className={`my-2 leading-[1.7] ${WRAP}`}>
         {renderInline(trimmed)}
       </p>,
     );
@@ -165,12 +177,13 @@ export function MessageBubble({
   focused = false,
 }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   if (message.role === 'user') {
     return (
       <div className="animate-rise flex justify-end gap-3">
-        <div className="elevate max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+        <div className="elevate max-w-[80%] min-w-0 rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm leading-relaxed break-words text-primary-foreground">
           {message.content}
         </div>
         <div className="avatar-shape mt-0.5 flex size-7 shrink-0 items-center justify-center border border-border bg-card">
@@ -184,14 +197,40 @@ export function MessageBubble({
   const sources = message.sources ?? [];
   const topScore = sources.length > 0 ? Math.max(...sources.map((s) => s.score)) : undefined;
 
+  /**
+   * Both halves of this are guards against things that actually happen.
+   *
+   * `navigator.clipboard` is undefined outside a secure context, which is what
+   * the page is the moment anyone opens it over `http://` on a LAN address
+   * rather than on localhost — the old code read `.writeText` off `undefined`
+   * and threw inside the click handler, where no error boundary can see it.
+   * And even where the API exists, Chrome rejects the write whenever the
+   * document is not focused; that rejection was unhandled and the button
+   * simply did nothing, twice over silently.
+   */
   const copy = () => {
-    void navigator.clipboard.writeText(message.content).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    });
+    const write = navigator.clipboard?.writeText(message.content);
+    if (!write) {
+      setFailed(true);
+      setTimeout(() => setFailed(false), 1600);
+      return;
+    }
+    void write.then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      },
+      () => {
+        setFailed(true);
+        setTimeout(() => setFailed(false), 1600);
+      },
+    );
   };
 
   const showActions = !message.streaming && !message.error && message.content !== '';
+  // Cancelled before the first token there is no text to show, so the bubble
+  // itself has to carry the outcome and hand the question back.
+  const stoppedEmpty = message.stopped === true && message.content === '';
 
   return (
     <div className="animate-rise group/message flex gap-3">
@@ -212,7 +251,7 @@ export function MessageBubble({
       <div className="min-w-0 flex-1">
         {message.error ? (
           <>
-            <div className="rounded-2xl rounded-tl-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <div className="rounded-2xl rounded-tl-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm break-words text-destructive">
               {message.error}
             </div>
             {/* Without this the error is a dead end: the question has to be
@@ -233,10 +272,33 @@ export function MessageBubble({
               ungrounded ? 'border-warning/30 bg-warning/5' : 'border-border bg-card'
             }`}
           >
-            <AnswerBody content={message.content} />
+            {stoppedEmpty ? (
+              <p className="text-muted-foreground">Yanıt durduruldu.</p>
+            ) : (
+              <AnswerBody content={message.content} />
+            )}
             {message.streaming && (
               <span className="animate-caret ml-0.5 inline-block h-[1.1em] w-[2px] translate-y-[0.2em] bg-primary" />
             )}
+          </div>
+        )}
+
+        {/* A cancelled answer that did produce text reads exactly like a
+            complete one. Saying so is the difference between a partial answer
+            and a wrong one. */}
+        {message.stopped && !stoppedEmpty && (
+          <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
+            Yanıt yarıda durduruldu.
+          </p>
+        )}
+
+        {stoppedEmpty && message.question && message.model && onReask && (
+          <div className="mt-2">
+            <ActionButton
+              icon={RefreshCw}
+              label="Tekrar dene"
+              onClick={() => onReask(message.question ?? '', message.model ?? '')}
+            />
           </div>
         )}
 
@@ -259,14 +321,19 @@ export function MessageBubble({
                 <span className="rounded-md bg-muted/60 px-2 py-1 font-mono text-[11px] text-muted-foreground">
                   {message.metrics.model}
                 </span>
-                {message.metrics.tokens_per_second !== undefined && (
+                {/* `!= null` rather than `!== undefined`: a refused answer
+                    carries no stats at all, and an absent number reaches the
+                    browser as `null`. `lib/api.ts` normalises that on the way
+                    in, but this is the render that blanked the whole page when
+                    one slipped through, so it checks for both. */}
+                {message.metrics.tokens_per_second != null && (
                   <MetricPill
                     icon={Gauge}
                     value={`${message.metrics.tokens_per_second.toFixed(1)} tok/s`}
                     label="Üretim hızı"
                   />
                 )}
-                {message.metrics.ttft_ms !== undefined && (
+                {message.metrics.ttft_ms != null && (
                   <MetricPill
                     icon={Clock}
                     value={`${message.metrics.ttft_ms.toFixed(0)} ms`}
@@ -279,8 +346,10 @@ export function MessageBubble({
             {showActions && (
               <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100">
                 <ActionButton
-                  icon={copied ? Check : Copy}
-                  label={copied ? 'Kopyalandı' : 'Kopyala'}
+                  icon={failed ? AlertTriangle : copied ? Check : Copy}
+                  label={
+                    failed ? 'Kopyalanamadı' : copied ? 'Kopyalandı' : 'Kopyala'
+                  }
                   onClick={copy}
                 />
                 {otherModel && message.question && onReask && (
@@ -304,16 +373,25 @@ export function MessageBubble({
                 onFocusSources?.(message.id);
               }}
               aria-expanded={expanded}
+              // The focused state is carried by the border and the tint, not by
+              // the text colour. `text-primary` at 11px measured 3.27:1 against
+              // the tinted dark surface — under WCAG AA — because `--primary`
+              // is a fill colour that expects `--primary-foreground` on top of
+              // it, not a colour to set small type in. Lightening the token
+              // instead would have moved the whole palette.
               className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition-colors ${
                 focused
-                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  ? 'border-primary/60 bg-primary/10 text-foreground'
                   : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground'
               }`}
             >
               <FileStack className="size-3" aria-hidden />
               {sources.length} kaynak
+              {/* No `opacity-70` here. Dimming an already-muted token put this
+                  at 4.07:1 on the dark background — below WCAG AA for 11px
+                  text. The label is quiet enough from the muted token alone. */}
               {topScore !== undefined && (
-                <span className="tabular font-mono opacity-70">
+                <span className="tabular font-mono">
                   · en yüksek {topScore.toFixed(2)}
                 </span>
               )}
