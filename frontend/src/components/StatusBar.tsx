@@ -4,6 +4,8 @@ import type { HealthResponse } from '@/lib/types';
 interface StatusBarProps {
   health: HealthResponse | undefined;
   embeddingModel: string | undefined;
+  /** The backend could not be reached at all — distinct from "still checking". */
+  unreachable?: boolean;
 }
 
 function Detail({
@@ -31,7 +33,18 @@ function Detail({
  * Surfacing this is the point of a local-first tool: if Ollama is down or the
  * index is empty, the user should see why rather than get a silent failure.
  */
-export function StatusBar({ health, embeddingModel }: StatusBarProps) {
+export function StatusBar({ health, embeddingModel, unreachable }: StatusBarProps) {
+  // A failed probe used to be indistinguishable from a slow one, so the strip
+  // sat on "checking…" indefinitely while the page stayed empty.
+  if (unreachable) {
+    return (
+      <div className="flex items-center gap-2 text-xs font-medium text-destructive">
+        <span className="size-1.5 rounded-full bg-destructive" />
+        Sunucuya ulaşılamadı
+      </div>
+    );
+  }
+
   if (!health) {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
