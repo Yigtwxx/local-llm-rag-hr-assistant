@@ -9,10 +9,18 @@ Soru da cevap da makineden çıkmaz. Hiçbir harici API çağrısı yoktur.
 
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Chroma](https://img.shields.io/badge/Chroma-vekt%C3%B6r%20deposu-FF6B6B?logo=chromatic&logoColor=white)](https://www.trychroma.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-lokal-000000?logo=ollama&logoColor=white)](https://ollama.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Ollama](https://img.shields.io/badge/Ollama-lokal-000000?logo=ollama&logoColor=white)](https://ollama.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
 [![Testler](https://img.shields.io/badge/testler-19%20pytest%20%C2%B7%208%20vitest-brightgreen)](#doğrulama)
+[![Ruff](https://img.shields.io/badge/ruff-temiz-D7FF64?logo=ruff&logoColor=black)](#doğrulama)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows-lightgrey)](#hızlı-başlangıç)
+[![Harici API](https://img.shields.io/badge/harici%20API-yok-success)](#güvenlik-ve-gizlilik)
+[![Lisans](https://img.shields.io/badge/lisans-MIT-blue)](LICENSE)
+[![Son commit](https://img.shields.io/github/last-commit/Yigtwxx/local-llm-rag-hr-assistant?label=son%20commit)](https://github.com/Yigtwxx/local-llm-rag-hr-assistant/commits/main)
 
 [**Türkçe**](README.md) · [English](README.en.md)
 
@@ -288,3 +296,7 @@ scripts/             dev.sh · dev.bat — iki sunucuyu birlikte kaldırır
 - Bilgi tabanı ve vektör deposu yereldedir (`backend/storage/`, git'e girmez).
 - Kaynak kodda gizli anahtar bulunmaz; tüm ayarlar ortam değişkenlerinden okunur.
 - `data/kb/` altındaki dokümanlar **kurgusaldır**, gerçek bir şirketi temsil etmez.
+
+## Lisans
+
+[MIT](LICENSE) — © 2026 Yiğit ERDOĞAN

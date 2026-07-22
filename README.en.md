@@ -10,10 +10,18 @@ API calls.
 
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Chroma](https://img.shields.io/badge/Chroma-vector%20store-FF6B6B?logo=chromatic&logoColor=white)](https://www.trychroma.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-local-000000?logo=ollama&logoColor=white)](https://ollama.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Ollama](https://img.shields.io/badge/Ollama-local-000000?logo=ollama&logoColor=white)](https://ollama.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
 [![Tests](https://img.shields.io/badge/tests-19%20pytest%20%C2%B7%208%20vitest-brightgreen)](#verification)
+[![Ruff](https://img.shields.io/badge/ruff-clean-D7FF64?logo=ruff&logoColor=black)](#verification)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows-lightgrey)](#quick-start)
+[![External APIs](https://img.shields.io/badge/external%20APIs-none-success)](#security-and-privacy)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/Yigtwxx/local-llm-rag-hr-assistant)](https://github.com/Yigtwxx/local-llm-rag-hr-assistant/commits/main)
 
 [Türkçe](README.md) · [**English**](README.en.md)
 
@@ -294,3 +302,7 @@ scripts/             dev.sh · dev.bat — bring both servers up together
 - The knowledge base and vector store stay local (`backend/storage/`, git-ignored).
 - No secrets in source; all settings are read from environment variables.
 - The documents under `data/kb/` are **fictional** and do not represent a real company.
+
+## License
+
+[MIT](LICENSE) — © 2026 Yiğit ERDOĞAN
