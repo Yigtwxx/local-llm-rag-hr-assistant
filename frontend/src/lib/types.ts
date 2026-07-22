@@ -6,8 +6,20 @@ export interface Source {
   source_file: string;
   score: number;
   excerpt: string;
+  /**
+   * Which arm of retrieval found this passage. `lexical` means a rare word in
+   * the question matched it, and its similarity score is expected to look low.
+   */
+  matched_by: 'dense' | 'lexical';
 }
 
+/**
+ * A measurement missing from these two arrives over the wire as `null`, not as
+ * an absent key — Python has no `undefined`. `lib/api.ts` converts it on the
+ * way in, so by the time a component sees one of these it really is
+ * `undefined`. Read them through those functions; a raw `response.json()` here
+ * would put nulls back and `!== undefined` does not catch them.
+ */
 export interface Metrics {
   model: string;
   ttft_ms: number | undefined;
@@ -53,11 +65,22 @@ export interface ChatMessage {
   metrics?: Metrics;
   /** False when the assistant declined because retrieval found nothing. */
   grounded?: boolean;
+  /**
+   * Follow-up questions drawn from passages ranked near this answer. Each one
+   * is answerable: they were written against passages that are in the index.
+   */
+  suggestions?: string[];
   streaming?: boolean;
+  /**
+   * The user cancelled this answer. Distinct from `error`: nothing went wrong,
+   * and whatever text had already arrived is still valid — it is just not the
+   * whole answer, which the reader cannot tell from the text alone.
+   */
+  stopped?: boolean;
   error?: string;
 }
 
-/** One benchmarked model's aggregate results. */
+/** One benchmarked model's aggregate results. Nulls are normalised as above. */
 export interface BenchSummary {
   model: string;
   runs: number;
