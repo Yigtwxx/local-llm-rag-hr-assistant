@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { ModelInfo } from '@/lib/types';
 
@@ -25,6 +25,33 @@ interface ModelSwitcherProps {
 export function ModelSwitcher({ models, active, disabled, onSelect }: ModelSwitcherProps) {
   const reduced = useReducedMotion();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
+  const pendingFocus = useRef<number | undefined>(undefined);
+
+  /**
+   * Selecting starts the transition curtain, which disables this whole group
+   * for the length of the sweep — and a disabled button cannot hold focus, so
+   * the browser moved it to `<body>` and a keyboard user was dropped out of the
+   * page entirely, having to tab in again from the top. Take focus back when
+   * the group returns.
+   *
+   * Guarded on `<body>` rather than restored unconditionally: if the user has
+   * clicked or tabbed somewhere in the meantime, that is where they want to be.
+   * The guard also makes the reduced-motion path — where nothing is ever
+   * disabled and the focus below already landed — a no-op.
+   */
+  useEffect(() => {
+    if (disabled) return;
+    const index = pendingFocus.current;
+    if (index === undefined) return;
+    pendingFocus.current = undefined;
+    if (document.activeElement === document.body) buttons.current[index]?.focus();
+  }, [disabled]);
+
+  const select = (index: number, name: string) => {
+    pendingFocus.current = index;
+    onSelect(name);
+    buttons.current[index]?.focus();
+  };
 
   /**
    * A radio group is expected to move with the arrow keys, not with Tab —
@@ -41,8 +68,7 @@ export function ModelSwitcher({ models, active, disabled, onSelect }: ModelSwitc
       const index = (((from + step * hop) % count) + count) % count;
       const candidate = models[index];
       if (!candidate?.available) continue;
-      onSelect(candidate.name);
-      buttons.current[index]?.focus();
+      select(index, candidate.name);
       return;
     }
   };
@@ -67,7 +93,7 @@ export function ModelSwitcher({ models, active, disabled, onSelect }: ModelSwitc
             // arrow keys move within it.
             tabIndex={selected ? 0 : -1}
             disabled={disabled || !model.available}
-            onClick={() => onSelect(model.name)}
+            onClick={() => select(index, model.name)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             title={model.available ? model.name : `${model.name} indirilmemiş`}
             className={`relative rounded-[max(1px,calc(var(--radius)-3px))] px-3 py-1.5 font-mono text-xs transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 ${
