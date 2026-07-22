@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpRight, Square } from 'lucide-react';
 import BorderGlow from '@/components/BorderGlow';
 import { Logo } from '@/components/Logo';
@@ -60,6 +60,20 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
   // Cancel any in-flight stream when the panel unmounts.
   useEffect(() => () => abortRef.current?.(), []);
 
+  // The composer is the only thing anyone comes here to use.
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Hand focus back when an answer finishes, so a follow-up needs no click.
+  // Only on the falling edge: focusing on every render would pull the caret
+  // away from whatever the user was reading while the answer streamed.
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    if (!busy && wasBusy.current) inputRef.current?.focus();
+    wasBusy.current = busy;
+  }, [busy]);
+
   // Follow-the-stream is disengaged by an explicit upward gesture, not by
   // measuring position on every scroll event — the smooth programmatic scroll
   // fires those too, and would immediately switch itself off mid-answer.
@@ -73,7 +87,7 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
     if (event.deltaY < 0) setAtBottom(false);
   };
 
-  const patchLast = (patch: Partial<ChatMessage>) => {
+  const patchLast = useCallback((patch: Partial<ChatMessage>) => {
     setMessages((prev) => {
       if (prev.length === 0) return prev;
       const next = [...prev];
@@ -82,7 +96,7 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
       next[next.length - 1] = { ...last, ...patch };
       return next;
     });
-  };
+  }, []);
 
   const send = (question: string, modelOverride?: string) => {
     const trimmed = question.trim();
@@ -131,11 +145,23 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
     });
   };
 
-  const stop = () => {
+  const stop = useCallback(() => {
     abortRef.current?.();
     patchLast({ streaming: false });
     setBusy(false);
-  };
+  }, [patchLast]);
+
+  // Esc cancels a running answer — the stop button is a mouse trip away, and
+  // a wrong question is usually obvious within the first line. `stop` is
+  // stable, so the listener is bound once per answer rather than per token.
+  useEffect(() => {
+    if (!busy) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') stop();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [busy, stop]);
 
   const otherModelFor = (used: string | undefined) =>
     models.find((candidate) => candidate.available && candidate.name !== (used ?? model))
@@ -239,7 +265,7 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
           type="button"
           onClick={() => setAtBottom(true)}
           aria-label="En alta in"
-          className="avatar-shape elevate-lift absolute bottom-32 left-1/2 z-10 flex size-8 -translate-x-1/2 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+          className="avatar-shape elevate-lift absolute bottom-32 left-1/2 z-10 flex size-8 -translate-x-1/2 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           <ArrowDown className="size-4" aria-hidden />
         </button>
