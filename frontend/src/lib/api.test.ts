@@ -105,6 +105,46 @@ describe('streamChat', () => {
     expect(sink.grounded).toBe(true);
   });
 
+  it('turns absent metrics into undefined rather than null', async () => {
+    // The refusal path never calls a model, so `app/api.py` fills every stat
+    // with JSON `null`. Consumers guard with `!== undefined`, which null slips
+    // straight through — `null.toFixed()` then throws mid-render. Normalising
+    // here, at the one place the payload is parsed, is what keeps that guard
+    // honest for every consumer.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        streamingResponse([
+          `data: ${JSON.stringify({
+            type: 'done',
+            grounded: false,
+            metrics: {
+              model: 'qwen3.5:9b',
+              ttft_ms: null,
+              total_ms: null,
+              eval_count: null,
+              tokens_per_second: null,
+              retrieval_ms: 21,
+            },
+          })}\n\n`,
+        ]),
+      ),
+    );
+
+    const sink = collect();
+    streamChat('merhaba', 'qwen3.5:9b', sink.handlers);
+    await sink.done;
+
+    expect(sink.metrics?.ttft_ms).toBeUndefined();
+    expect(sink.metrics?.total_ms).toBeUndefined();
+    expect(sink.metrics?.eval_count).toBeUndefined();
+    expect(sink.metrics?.tokens_per_second).toBeUndefined();
+    // Values that are present must survive untouched.
+    expect(sink.metrics?.retrieval_ms).toBe(21);
+    expect(sink.metrics?.model).toBe('qwen3.5:9b');
+    expect(sink.grounded).toBe(false);
+  });
+
   it('reassembles frames split across network chunk boundaries', async () => {
     // A single SSE frame arriving in three pieces must not be dropped — this is
     // the failure mode that makes streamed answers lose characters.
@@ -160,6 +200,78 @@ describe('streamChat', () => {
     await sink.done;
 
     expect(sink.errors[0]).toContain('500');
+  });
+
+  it('reports a stream that ends without a terminal event', async () => {
+    // Tokens arrive, then the body simply stops — what a truncated response
+    // looks like from here. Without a terminal event the caller has no way to
+    // know it is over: the bubble streamed forever and the composer stayed
+    // locked. The backend guarantees `done` or `error`; this covers everything
+    // in between that could cut the body short.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        streamingResponse([
+          `data: ${JSON.stringify({ type: 'token', text: 'Yıllık izniniz' })}\n\n`,
+        ]),
+      ),
+    );
+
+    const sink = collect();
+    streamChat('soru', 'qwen3.5:9b', sink.handlers);
+    await sink.done;
+
+    expect(sink.tokens.join('')).toBe('Yıllık izniniz');
+    expect(sink.errors[0]).toContain('Yanıt tamamlanamadı');
+  });
+
+  it('does not report an error after a complete answer', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        streamingResponse([
+          `data: ${JSON.stringify({ type: 'token', text: 'tamam' })}\n\n`,
+          `data: ${JSON.stringify({ type: 'done', grounded: true, metrics: METRICS })}\n\n`,
+        ]),
+      ),
+    );
+
+    const sink = collect();
+    streamChat('soru', 'qwen3.5:9b', sink.handlers);
+    await sink.done;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(sink.errors).toEqual([]);
+  });
+
+  it('explains a dropped connection in Turkish rather than passing the browser message through', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+    );
+
+    const sink = collect();
+    streamChat('soru', 'qwen3.5:9b', sink.handlers);
+    await sink.done;
+
+    // The browser's own message is untranslated and names the transport, not
+    // anything the reader can act on. It used to be the entire explanation.
+    expect(sink.errors[0]).not.toContain('Failed to fetch');
+    expect(sink.errors[0]).toContain('Sunucuya ulaşılamadı');
+  });
+
+  it('stays silent when the caller aborts', async () => {
+    const abortError = new DOMException('The user aborted a request.', 'AbortError');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abortError));
+
+    const sink = collect();
+    const abort = streamChat('soru', 'qwen3.5:9b', sink.handlers);
+    abort();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // Cancelling is not a failure: an error bubble here would contradict the
+    // "Yanıt durduruldu." the panel already shows.
+    expect(sink.errors).toEqual([]);
   });
 
   it('sends think=false by default so timings stay comparable', async () => {
