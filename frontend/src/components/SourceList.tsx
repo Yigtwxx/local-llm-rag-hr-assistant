@@ -53,7 +53,7 @@ function ScoreMeter({ score }: { score: number }) {
         {score.toFixed(3)}
       </span>
       <div
-        className="h-1 w-10 overflow-hidden rounded-full bg-muted"
+        className="h-1 w-12 overflow-hidden rounded-full bg-muted"
         role="img"
         aria-label={`Kosinüs benzerliği ${score.toFixed(3)}`}
       >
