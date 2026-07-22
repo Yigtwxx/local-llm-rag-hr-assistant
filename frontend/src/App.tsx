@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, PlugZap, Sun } from 'lucide-react';
 import { BenchmarkPanel } from '@/components/BenchmarkPanel';
 import { ChatPanel } from '@/components/ChatPanel';
 import { Logo } from '@/components/Logo';
@@ -18,13 +18,44 @@ import { fetchHealth, fetchModels } from '@/lib/api';
 import { SKIN_CLASSES, skinFor } from '@/lib/modelSkin';
 import type { HealthResponse, ModelInfo, ModelsResponse, Source } from '@/lib/types';
 
+/**
+ * Storage is behind try/catch on both sides: Safari's private mode throws on
+ * access rather than returning null, and a theme preference is not worth
+ * taking the app down for.
+ *
+ * The same key and the same fallback order are duplicated in the inline script
+ * in `index.html`, which applies the class before first paint. If either side
+ * changes, both have to.
+ */
+const THEME_KEY = 'novatek-theme';
+
+function readStoredTheme(): 'dark' | 'light' | undefined {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === 'dark' || value === 'light' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function storeTheme(theme: 'dark' | 'light'): void {
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // Preference simply does not persist this session.
+  }
+}
+
 function useTheme() {
-  const [dark, setDark] = useState(
-    () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-  );
+  const [dark, setDark] = useState(() => {
+    const stored = readStoredTheme();
+    if (stored) return stored === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
+    storeTheme(dark ? 'dark' : 'light');
   }, [dark]);
 
   return { dark, toggle: () => setDark((value) => !value) };
@@ -40,21 +71,30 @@ export default function App() {
   const [sources, setSources] = useState<Source[]>([]);
   const [retrievalMs, setRetrievalMs] = useState<number | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const [bootState, setBootState] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  // Both calls are treated as one: without /models there is no chat panel to
+  // render, so failing either way leaves the same unusable page. Swallowing
+  // these — as this once did — left the status strip checking forever and the
+  // main column blank, with nothing saying the backend was down.
+  const loadBackend = useCallback(() => {
+    setBootState('loading');
+    Promise.all([fetchHealth(), fetchModels()])
+      .then(([healthResponse, modelsResponse]) => {
+        setHealth(healthResponse);
+        setModels(modelsResponse);
+        const preferred =
+          modelsResponse.models.find((model) => model.available) ??
+          modelsResponse.models[0];
+        if (preferred) setActiveModel(preferred.name);
+        setBootState('ready');
+      })
+      .catch(() => setBootState('error'));
+  }, []);
 
   useEffect(() => {
-    fetchHealth()
-      .then(setHealth)
-      .catch(() => undefined);
-
-    fetchModels()
-      .then((response) => {
-        setModels(response);
-        const preferred =
-          response.models.find((model) => model.available) ?? response.models[0];
-        if (preferred) setActiveModel(preferred.name);
-      })
-      .catch(() => undefined);
-  }, []);
+    loadBackend();
+  }, [loadBackend]);
 
   const active = models?.models.find((model) => model.name === activeModel);
 
@@ -103,7 +143,7 @@ export default function App() {
       />
 
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-[90rem] flex-wrap items-center justify-between gap-3 px-5 py-3">
+        <div className="mx-auto flex max-w-[110rem] flex-wrap items-center justify-between gap-3 px-5 py-3">
           <div className="flex items-center gap-2.5">
             <Logo
               className="size-6 text-primary transition-colors duration-300"
@@ -138,20 +178,46 @@ export default function App() {
       {/* Readiness gets its own band. Buried in the header it read as
           decoration; on its own strip it reads as system state. */}
       <div className="border-b border-border bg-card/50">
-        <div className="mx-auto max-w-[90rem] px-5 py-2">
-          <StatusBar health={health} embeddingModel={models?.embedding_model} />
+        <div className="mx-auto max-w-[110rem] px-5 py-2">
+          <StatusBar
+            health={health}
+            embeddingModel={models?.embedding_model}
+            unreachable={bootState === 'error'}
+          />
         </div>
       </div>
 
-      <main className="mx-auto grid w-full max-w-[90rem] grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_21rem]">
+      {/* The rail widens with the window instead of stopping at the shell's
+          centring gutter — on a wide screen that gutter left a dead strip to
+          its right. The chat column absorbs the rest; its own max-w-3xl keeps
+          the reading measure fixed. */}
+      <main className="mx-auto grid w-full max-w-[110rem] grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_16rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
-          {activeModel && models && (
-            <ChatPanel
-              model={activeModel}
-              models={models.models}
-              onSources={handleSources}
-              onBusyChange={setBusy}
-            />
+          {bootState === 'error' ? (
+            <div className="flex h-full flex-col items-center justify-center gap-4 px-5 text-center">
+              <PlugZap className="size-8 text-destructive/70" aria-hidden />
+              <div className="space-y-1.5">
+                <h2 className="text-base font-semibold">Sunucuya ulaşılamadı</h2>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Arka uç yanıt vermiyor. <code className="font-mono">./scripts/dev.sh</code>{' '}
+                  veya <code className="font-mono">docker compose up</code> ile
+                  başlattıktan sonra tekrar deneyin.
+                </p>
+              </div>
+              <Button variant="outline" onClick={loadBackend}>
+                Tekrar dene
+              </Button>
+            </div>
+          ) : (
+            activeModel &&
+            models && (
+              <ChatPanel
+                model={activeModel}
+                models={models.models}
+                onSources={handleSources}
+                onBusyChange={setBusy}
+              />
+            )
           )}
         </div>
 
