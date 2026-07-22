@@ -9,6 +9,9 @@
       content="Şirket içi İK dokümanları üzerinde tamamen lokal çalışan doküman tabanlı soru-cevap (RAG) asistanı."
     />
     <title>NovaTek İK Asistanı</title>
+    <!-- Blocking on purpose: the theme class has to be on <html> before the
+         first paint, otherwise the page flashes light. -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
