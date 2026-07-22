@@ -1,126 +1,128 @@
 <div align="center">
 
-# NovaTek İK Asistanı
+# NovaTek HR Assistant
 
-**Şirket içi dokümanlara dayanarak cevap veren, tamamen lokal çalışan RAG sistemi
-— ve onu besleyen LLM kıyaslama altyapısı.**
+**A fully local RAG system that answers questions from internal company
+documents — and the LLM benchmarking harness behind it.**
 
-Soru da cevap da makineden çıkmaz. Hiçbir harici API çağrısı yoktur.
+Neither the question nor the answer leaves the machine. There are no external
+API calls.
 
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Chroma](https://img.shields.io/badge/Chroma-vekt%C3%B6r%20deposu-FF6B6B?logo=chromatic&logoColor=white)](https://www.trychroma.com/)
-[![Ollama](https://img.shields.io/badge/Ollama-lokal-000000?logo=ollama&logoColor=white)](https://ollama.com/)
+[![Chroma](https://img.shields.io/badge/Chroma-vector%20store-FF6B6B?logo=chromatic&logoColor=white)](https://www.trychroma.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-local-000000?logo=ollama&logoColor=white)](https://ollama.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-[![Testler](https://img.shields.io/badge/testler-19%20pytest%20%C2%B7%208%20vitest-brightgreen)](#doğrulama)
-[![Ruff](https://img.shields.io/badge/ruff-temiz-D7FF64?logo=ruff&logoColor=black)](#doğrulama)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows-lightgrey)](#hızlı-başlangıç)
-[![Harici API](https://img.shields.io/badge/harici%20API-yok-success)](#güvenlik-ve-gizlilik)
-[![Lisans](https://img.shields.io/badge/lisans-MIT-blue)](LICENSE)
-[![Son commit](https://img.shields.io/github/last-commit/Yigtwxx/local-llm-rag-hr-assistant?label=son%20commit)](https://github.com/Yigtwxx/local-llm-rag-hr-assistant/commits/main)
-
-[**Türkçe**](README.md) · [English](README.en.md)
+[![Tests](https://img.shields.io/badge/tests-19%20pytest%20%C2%B7%208%20vitest-brightgreen)](#verification)
+[![Ruff](https://img.shields.io/badge/ruff-clean-D7FF64?logo=ruff&logoColor=black)](#verification)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows-lightgrey)](#quick-start)
+[![External APIs](https://img.shields.io/badge/external%20APIs-none-success)](#security-and-privacy)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/Yigtwxx/local-llm-rag-hr-assistant)](https://github.com/Yigtwxx/local-llm-rag-hr-assistant/commits/main)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/ui-dark.png">
-  <img alt="NovaTek İK Asistanı arayüzü: solda cevap, sağda cevabın dayandığı kaynaklar" src="docs/images/ui-light.png" width="900">
+  <img alt="NovaTek HR Assistant: the answer on the left, the passages it was grounded in on the right" src="docs/images/ui-light.png" width="900">
 </picture>
 
-<sub>Her cevabın yanında onu üreten parçalar ve benzerlik skorları duruyor —
-kullanıcı cevaba değil, kaynağa güvenebilsin diye.</sub>
+<sub>Every answer sits next to the passages that produced it and their
+similarity scores — so the user can trust the source, not the answer.</sub>
+
+<sub>The interface is in Turkish; the knowledge base is a set of fictional
+Turkish HR policies.</sub>
 
 </div>
 
 ---
 
-## Neden
+## Why
 
-Özlük dosyaları, maaş bantları ve performans notları buluta gönderilemeyen
-verilerdir. Bu proje, o verilere dokunan bir soru-cevap sisteminin makineden
-hiç çıkmadan kurulabileceğini gösteriyor — ve maliyetini ölçüyor.
+Personnel files, salary bands and performance notes are exactly the data that
+cannot be sent to a cloud provider. This project shows that a question-answering
+system touching that data can be built without anything leaving the machine —
+and measures what it costs.
 
-**Ölçümün ortaya çıkardığı şey beklenenin tersiydi.** Aynı sınıf bir modeli
-bulutta çalıştırmak bu ölçekte yılda ~600 TL; lokal kurulumun yalnızca
-elektriği 1.700–5.800 TL. Yani lokal çalıştırmak bu iş yükünde **daha ucuz
-değil**. Proje bunu gizlemek yerine tezini değiştirdi: lokal kurulum bir
-tasarruf kalemi değil, **ölçülebilir bir gizlilik primidir**. Ne kadar
-ödendiği raporda sayılarla duruyor.
+**The measurement found the opposite of what was expected.** At this scale,
+running a comparable model in the cloud costs roughly ₺600/year, while the
+electricity alone for the local setup runs ₺1,700–5,800. Local is **not
+cheaper** for this workload. Rather than bury that, the project changed its
+thesis: a local deployment is not a cost saving but a **measurable privacy
+premium**. The report states exactly how much that premium is.
 
-## Öne çıkanlar
+## Highlights
 
 | | |
 |---|---|
-| **Kaynağa bağlı cevap** | Her cevap, dayandığı parçalarla ve kosinüs benzerlik skorlarıyla birlikte gelir. Skor da metin de ekranda; "güven bana" yok. |
-| **Uydurmayı reddetme** | İki savunma katmanı: benzerlik eşiği (0,46) ve sistem prompt'u. Kapsam dışı soru eşiği geçse bile model reddediyor — iki model × üç koşuda altı kez de doğrulandı. |
-| **Canlı model kıyası** | Sağ üstten model değiştirip aynı soruyu tekrar sorabilirsiniz. Kıyas rapordaki bir tablo değil, kullanılabilir bir özellik. |
-| **Modele göre arayüz** | İki model iki ayrı görsel dil taşır — renk, köşe yarıçapı, gölge derinliği, marka işareti. Hangi modelde olduğunuz etikete bakmadan anlaşılır. |
-| **Kirlenmeyi yakalayan ölçüm** | Harness, koşu öncesi Ollama'daki yabancı modelleri boşaltır ve koşu boyunca izler. Ölçümlerin ikisi bu sayede geçersiz sayıldı — sessizce rapora girmedi. |
+| **Grounded answers** | Every answer ships with the passages it used and their cosine similarity scores. Both the score and the text are on screen — no "trust me". |
+| **Refusal over invention** | Two layers of defence: a similarity threshold (0.46) and the system prompt. Even when an out-of-scope question clears the threshold, the model declines — confirmed six times across two models × three runs. |
+| **Live model comparison** | Switch models in the header and re-ask the same question. The comparison is a usable feature, not a table in a report. |
+| **Per-model interface** | The two models carry two distinct visual languages — colour, corner radius, elevation, brand mark. You can tell which one you are on without reading a label. |
+| **Contamination-aware benchmarks** | The harness unloads foreign models from Ollama before a run and watches for new ones during it. Two runs were invalidated this way instead of quietly reaching the report. |
 
-## Mimari
+## Architecture
 
 ```mermaid
 flowchart LR
-    FE["React 19 + TypeScript<br/><i>akışlı arayüz</i>"]
-    API["FastAPI<br/><i>SSE uçları</i>"]
-    RET["retrieval.py<br/><i>vektör arama + eşik</i>"]
-    DB[("ChromaDB<br/>37 parça · 1024 boyut")]
-    RAG["rag.py<br/><i>prompt kurulumu</i>"]
+    FE["React 19 + TypeScript<br/><i>streaming UI</i>"]
+    API["FastAPI<br/><i>SSE endpoints</i>"]
+    RET["retrieval.py<br/><i>vector search + threshold</i>"]
+    DB[("ChromaDB<br/>37 chunks · 1024 dims")]
+    RAG["rag.py<br/><i>prompt assembly</i>"]
     OL["Ollama<br/>qwen3.5:9b · gemma4:12b<br/>qwen3-embedding:0.6b"]
 
-    FE -- "soru" --> API
+    FE -- "question" --> API
     API --> RET
     RET <--> DB
     RET -- "embed" --> OL
-    RET -- "top-4 parça" --> RAG
+    RET -- "top-4 chunks" --> RAG
     RAG --> OL
-    OL -- "token akışı" --> API
+    OL -- "token stream" --> API
     API -- "SSE" --> FE
 ```
 
-Tamamı `localhost` üzerindedir; hiçbir ok makinenin dışına çıkmaz.
+Everything runs on `localhost`; no arrow leaves the machine.
 
-## Hızlı başlangıç
+## Quick start
 
-**Gereksinimler:** [Ollama](https://ollama.com/download) ≥ 0.32 ·
-Python ≥ 3.12 ([`uv`](https://docs.astral.sh/uv/) ile) · Node.js ≥ 20
+**Requirements:** [Ollama](https://ollama.com/download) ≥ 0.32 ·
+Python ≥ 3.12 (via [`uv`](https://docs.astral.sh/uv/)) · Node.js ≥ 20
 
 ```bash
-# 1 — Modelleri indir (~15 GB, tek seferlik)
-ollama pull qwen3.5:9b            # 6,6 GB — birincil sohbet modeli
-ollama pull gemma4:12b            # 7,6 GB — karşılaştırma modeli
-ollama pull qwen3-embedding:0.6b  # 639 MB — embedding modeli
+# 1 — Pull the models (~15 GB, one-off)
+ollama pull qwen3.5:9b            # 6.6 GB — primary chat model
+ollama pull gemma4:12b            # 7.6 GB — comparison model
+ollama pull qwen3-embedding:0.6b  # 639 MB — embedding model
 
-# 2 — Bilgi tabanını indeksle (tek seferlik)
-cd backend && uv run python -m app.ingest    # 4 doküman → 37 parça
+# 2 — Index the knowledge base (one-off)
+cd backend && uv run python -m app.ingest    # 4 documents → 37 chunks
 
-# 3 — Her şeyi başlat
+# 3 — Start everything
 ./scripts/dev.sh                             # Windows: scripts\dev.bat
 ```
 
-Arayüz hazır olduğunda kendiliğinden açılır. Backend
-<http://127.0.0.1:8000> (`/docs` altında OpenAPI), arayüz
-<http://localhost:5173>.
+The UI opens by itself once it is ready. Backend at <http://127.0.0.1:8000>
+(OpenAPI under `/docs`), frontend at <http://localhost:5173>.
 
 <details>
-<summary><b>Elle başlatmak / betiğin ne yaptığı</b></summary>
+<summary><b>Running it manually / what the script does</b></summary>
 
 <br>
 
-`scripts/dev.sh` iki sunucuyu birlikte ayağa kaldırır, loglarını kaynak
-etiketiyle tek terminale akıtır ve ikisini tek grup olarak kapatır — Ctrl+C
-biri için değil ikisi için geçerlidir, biri çökerse diğeri de iner.
-Başlamadan önce `uv`/`npm` var mı, portlar boş mu, indeks kurulu mu diye
-bakar; hata bir traceback olarak değil tek satır olarak çıkar.
+`scripts/dev.sh` brings both servers up together, streams their logs into one
+terminal tagged by source, and tears them down as a group — Ctrl+C applies to
+both, and if one crashes the other follows. Before starting it checks that
+`uv`/`npm` exist, that the ports are free and that the index is built, so a
+problem surfaces as one line rather than a traceback.
 
 ```bash
-BACKEND_PORT=8001 ./scripts/dev.sh   # port çakışırsa
-NO_OPEN=1 ./scripts/dev.sh           # tarayıcıyı açma
+BACKEND_PORT=8001 ./scripts/dev.sh   # on a port conflict
+NO_OPEN=1 ./scripts/dev.sh           # do not open a browser
 ```
 
-Elle yürütmek isterseniz:
+By hand:
 
 ```bash
 # terminal 1
@@ -130,173 +132,175 @@ cd backend && uv run uvicorn app.api:app --reload
 cd frontend && npm install && npm run dev
 ```
 
-Ayar değiştirmek için `.env.example` dosyasını `.env` olarak kopyalayın.
-Varsayılanlarla çalıştığından bu adım zorunlu değildir.
+To change settings, copy `.env.example` to `.env`. It runs on the defaults, so
+this step is optional.
 
 </details>
 
-## Ölçüm sonuçları
+## Benchmark results
 
-Apple M4 Pro · 48 GB birleşik bellek · üç temiz koşunun birleşimi.
-Her iki model de baytı baytına aynı prompt'ları, aynı `temperature`, `seed`,
-`num_predict` ve `think` değerleriyle alır.
+Apple M4 Pro · 48 GB unified memory · aggregate of three clean runs.
+Both models receive byte-for-byte identical prompts with the same
+`temperature`, `seed`, `num_predict` and `think` values.
 
-| Metrik | `qwen3.5:9b` | `gemma4:12b` |
+| Metric | `qwen3.5:9b` | `gemma4:12b` |
 |---|---:|---:|
-| Üretim hızı (token ağırlıklı) | **37,35 ± 0,46** tok/s | 27,65 ± 0,27 tok/s |
-| İlk cevap (TTFT, medyan) | **1.941 ms** | 2.978 ms |
-| Bellek (Ollama `/api/ps`) | **6,29 GB** | 7,85 GB |
-| Cevap doğruluğu | 14/14 | 14/14 |
-| Kaynağa sadakat | 11/11 | 11/11 |
-| Retrieval (modelden bağımsız) | 82 – 102 ms | 82 – 102 ms |
+| Throughput (token-weighted) | **37.35 ± 0.46** tok/s | 27.65 ± 0.27 tok/s |
+| Time to first token (median) | **1,941 ms** | 2,978 ms |
+| Memory (Ollama `/api/ps`) | **6.29 GB** | 7.85 GB |
+| Answer accuracy | 14/14 | 14/14 |
+| Grounding fidelity | 11/11 | 11/11 |
+| Retrieval (model-independent) | 82 – 102 ms | 82 – 102 ms |
 
-Kalite ve sadakatte iki model eşit; ayrışma hız ve bellekte. Bu iş yükü için
-`qwen3.5:9b` %35 daha hızlı ve 1,5 GB daha az bellek istiyor.
+The two models tie on quality and grounding; they separate on speed and
+memory. For this workload `qwen3.5:9b` is 35% faster and needs 1.5 GB less.
 
-Retrieval embedding modeline aittir, sohbet modelinden bağımsızdır — bu yüzden
-tek sayı olarak raporlanır. Verilen aralık koşu medyanlarıdır; başlangıçtan
-sonraki **ilk** sorgu 0,1–8,6 s sürebilir, çünkü embedding modeli o sırada
-belleğe yükleniyor. Bu bir gürültü değil, gerçek bir maliyet.
+Retrieval belongs to the embedding model, not the chat model, which is why it
+is reported as a single figure. The range given is the per-run median; the
+**first** query after startup can take 0.1–8.6 s because the embedding model is
+being loaded into memory at that moment. That is a real cost, not noise.
 
 <details>
-<summary><b>Nasıl ölçüldü</b></summary>
+<summary><b>How it was measured</b></summary>
 
 <br>
 
-- **token/s** — `Σ token / Σ üretim süresi`, Ollama'nın `eval_count` /
-  `eval_duration` sayaçlarından. Vaka ortalaması ve standart sapma ayrıca
-  raporlanır: tek bir ortalama koşu içi değişkenliği gizler.
-- **TTFT** — ilk token'a kadar geçen süre, medyan.
-- **Bellek** — Ollama'nın `/api/ps` raporundaki model boyutu. Süreç RSS'i de
-  kaydedilir ama `mmap` nedeniyle güvenilir değildir (ayrıntı: araştırma
-  raporu Bölüm 9.4).
-- **Kalite** — anahtar kelime eşleşmesiyle geçti/kaldı.
-- **Kaynağa sadakat** — kapsam dışı soruda uydurmadan reddetme oranı.
+- **tok/s** — `Σ tokens / Σ generation time`, from Ollama's `eval_count` /
+  `eval_duration` counters. Per-case mean and standard deviation are reported
+  separately: a single average hides within-run variance.
+- **TTFT** — time to the first token, median.
+- **Memory** — the model size Ollama reports via `/api/ps`. Process RSS is
+  recorded too but is unreliable because of `mmap` (see research report §9.4).
+- **Quality** — pass/fail via keyword matching.
+- **Grounding fidelity** — how often an out-of-scope question is declined
+  instead of answered from invention.
 
 ```bash
 cd backend
-uv run python -m bench.run_bench                    # reasoning kapalı (varsayılan)
-uv run python -m bench.run_bench --think            # reasoning açık
-uv run python -m bench.calibrate_threshold          # benzerlik eşiğini kalibre et
-uv run python -m bench.run_bench --output run.json  # latest.json'ın üzerine yazma
+uv run python -m bench.run_bench                    # reasoning off (default)
+uv run python -m bench.run_bench --think            # reasoning on
+uv run python -m bench.calibrate_threshold          # calibrate the similarity threshold
+uv run python -m bench.run_bench --output run.json  # do not overwrite latest.json
 ```
 
-Saklanan koşular:
+Retained runs:
 
-| Dosya | Eşik | Not |
+| File | Threshold | Note |
 |---|---|---|
-| `run4-clean` · `run5-reversed` · `run6-repeat` | 0,52 | Üç temiz koşu; yukarıdaki hız/TTFT/bellek sayıları buradan |
-| `run8-clean` · `run9-reversed` | 0,46 | Ölçüm sırasında başka bir uygulama Ollama'ya 23 GB'lık model yükledi — harness uyardı, hız sayıları **kullanılmadı** |
-| `run10-repeat` | 0,46 | Eşik değişikliği sonrası tek tamamen temiz koşu; 4–6'yı doğrular |
-| `run11-think` | 0,46 | Reasoning modu açık — ikincil bulgu |
-| `run3-memory-pressure` | 0,52 | Düzeltilmemiş RAM ölçümüyle alınan ilk koşu; karşılaştırma için tutuluyor |
+| `run4-clean` · `run5-reversed` · `run6-repeat` | 0.52 | Three clean runs; the speed/TTFT/memory figures above come from these |
+| `run8-clean` · `run9-reversed` | 0.46 | Another application loaded a 23 GB model into Ollama mid-run — the harness flagged it and the speed figures were **discarded** |
+| `run10-repeat` | 0.46 | The one fully clean run after the threshold change; confirms 4–6 |
+| `run11-think` | 0.46 | Reasoning mode on — secondary finding |
+| `run3-memory-pressure` | 0.52 | First run, taken with the uncorrected RAM measurement; kept for comparison |
 
 </details>
 
-## Mimari kararlar
+## Design decisions
 
 <details>
-<summary><b>Benzerlik eşiği neden 0,52 değil 0,46</b></summary>
+<summary><b>Why the similarity threshold is 0.46, not 0.52</b></summary>
 
 <br>
 
-0,52 uzun sorularla kalibre edilmişti ve "Harcırah ne kadar?" gibi kısa
-soruları reddediyordu — 19 kapsam içi sorunun 4'ünü. 0,46, sıfır kaçırma
-sağlayan en yüksek değer. Karşılığında 9 kapsam dışı sorunun 2'si eşiği geçip
-sistem prompt'una düşüyor; ikinci katman onları da reddediyor. Tek eşikle
-hem kaçırmamak hem kapsam dışını elemek mümkün değil, o yüzden savunma iki
-katmanlı.
-
-</details>
-
-<details>
-<summary><b>Neden <code>think=False</code> her çağrıda açıkça gönderiliyor</b></summary>
-
-<br>
-
-`qwen3.5`'te reasoning varsayılan olarak açık, `gemma4`'te kapalı. Varsayılana
-bırakılsaydı bir model düşünme token'ları da üretecek, diğeri üretmeyecekti —
-hız kıyası geçersiz olurdu. Değer her istekte açıkça gönderiliyor.
+0.52 was calibrated on long questions and rejected short ones such as "How much
+is the per-diem?" — 4 of 19 in-scope questions. 0.46 is the highest value that
+misses none of them. In exchange, 2 of 9 out-of-scope questions clear the
+threshold and reach the system prompt, where the second layer declines them.
+No single threshold both catches everything in scope and filters everything
+out of scope, which is why the defence has two layers.
 
 </details>
 
 <details>
-<summary><b>Parçalama başlık hiyerarşisini neden koruyor</b></summary>
+<summary><b>Why <code>think=False</code> is sent explicitly on every call</b></summary>
 
 <br>
 
-Bir İK dokümanında "16 iş günü" ifadesi tek başına anlamsızdır; hangi başlığın
-altında geçtiği anlamı belirler. `chunking.py` her parçaya doküman başlığını ve
-bölüm yolunu ekliyor, böylece embedding bağlamı da taşıyor. Arayüz kaynak
-kartlarında aynı bölüm yolunu gösteriyor — aynı politikadan gelen dört parça
-yalnızca doküman adıyla birbirinden ayırt edilemezdi.
+Reasoning is on by default in `qwen3.5` and off in `gemma4`. Left to the
+defaults, one model would emit thinking tokens and the other would not, which
+invalidates any speed comparison. The value is sent explicitly on every request.
 
 </details>
 
-## Doğrulama
+<details>
+<summary><b>Why chunking preserves the heading hierarchy</b></summary>
+
+<br>
+
+In an HR document "16 working days" means nothing on its own; the heading it
+sits under is what fixes its meaning. `chunking.py` prepends the document title
+and section path to every chunk, so the embedding carries that context too. The
+UI shows the same section path on each source card — four chunks from one policy
+would otherwise be indistinguishable by document title alone.
+
+</details>
+
+## Verification
 
 ```bash
 cd backend  && uv run ruff check . && uv run ruff format --check . && uv run pytest
 cd frontend && npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-## Sınırlar
+## Known limitation
 
-Dürüstçe: **"Babalık izni kaç gün?"** sorusunda cevabı birebir içeren parça 37
-parça arasında 12. sırada (skor 0,419) kalıyor, top-4'e giremiyor ve sistem
-soruyu reddediyor. Dense retrieval'ın klasik kelime dağarcığı uyuşmazlığı
-sorunu; standart çözümü hibrit arama (BM25 + vektör).
+Stated plainly: for the question **"How many days is paternity leave?"** the
+chunk that literally contains the answer ranks 12th of 37 (score 0.419), never
+reaches the top-4, and the system declines the question. This is dense
+retrieval's classic vocabulary-mismatch problem; the standard fix is hybrid
+search (BM25 + vector).
 
-Düzeltilmedi, çünkü indeksi yeniden kurmak altı koşuluk ölçümü ve eşik
-kalibrasyonunu geçersiz kılardı. Devam edilirse ilk iş budur.
+It was left unfixed because rebuilding the index would invalidate six benchmark
+runs and the threshold calibration. It is the first thing to do if this work
+continues.
 
-## Proje yapısı
+## Project layout
 
 <details>
-<summary><b>Dosya ağacı</b></summary>
+<summary><b>File tree</b></summary>
 
 <br>
 
 ```
 backend/
   app/
-    config.py        Ortam değişkenlerinden ayarlar (hardcode yok)
-    chunking.py      Başlık hiyerarşisini koruyan Markdown parçalama
-    ingest.py        Parçala → göm → ChromaDB'ye yaz
-    retrieval.py     Vektör arama + benzerlik eşiği
-    llm.py           Ollama HTTP istemcisi, retry + streaming
-    rag.py           Getir → prompt kur → akışlı cevap
-    api.py           FastAPI uçları (SSE)
-    prompts/         Prompt şablonları (kod içine gömülü değil)
-  bench/             Kıyaslama ve eşik kalibrasyon araçları
-  tests/             pytest birim testleri
+    config.py        Settings from environment variables (nothing hardcoded)
+    chunking.py      Markdown chunking that preserves heading hierarchy
+    ingest.py        Chunk → embed → write to ChromaDB
+    retrieval.py     Vector search + similarity threshold
+    llm.py           Ollama HTTP client, retry + streaming
+    rag.py           Retrieve → assemble prompt → stream answer
+    api.py           FastAPI endpoints (SSE)
+    prompts/         Prompt templates (not embedded in code)
+  bench/             Benchmark and threshold-calibration tooling
+  tests/             pytest unit tests
 frontend/
   src/
-    lib/api.ts       Tipli SSE istemcisi
-    lib/modelSkin.ts Modele göre görsel kimlik
-    components/      Sohbet, kaynak kartları, benchmark paneli
-data/kb/             Kurgusal İK dokümanları (bilgi tabanı)
-scripts/             dev.sh · dev.bat — iki sunucuyu birlikte kaldırır
+    lib/api.ts       Typed SSE client
+    lib/modelSkin.ts Per-model visual identity
+    components/      Chat, source cards, benchmark panel
+data/kb/             Fictional HR documents (the knowledge base)
+scripts/             dev.sh · dev.bat — bring both servers up together
 ```
 
 </details>
 
-## Dokümanlar
+## Documents
 
-| Dosya | İçerik |
+| File | Contents |
 |---|---|
-| [`docs/arastirma-raporu.md`](docs/arastirma-raporu.md) | Araştırma raporu — donanım, quantization, maliyet analizi, ölçüm metodolojisi |
-| [`docs/proje-raporu.md`](docs/proje-raporu.md) | Proje raporu — mimari gerekçeler, sonuçlar, sınırlar |
-| [`docs/slides/index.html`](docs/slides/index.html) | Sunum (tarayıcıda açılır, Cmd/Ctrl+P ile PDF'e basılır) |
-| `backend/bench/results/` | Ham benchmark çıktıları (JSON) |
+| [`docs/arastirma-raporu.md`](docs/arastirma-raporu.md) | Research report (Turkish) — hardware, quantization, cost analysis, measurement methodology |
+| [`docs/proje-raporu.md`](docs/proje-raporu.md) | Project report (Turkish) — design rationale, results, limitations |
+| [`docs/slides/index.html`](docs/slides/index.html) | Slide deck (opens in a browser, print to PDF with Cmd/Ctrl+P) |
+| `backend/bench/results/` | Raw benchmark output (JSON) |
 
-## Güvenlik ve gizlilik
+## Security and privacy
 
-- Hiçbir harici API çağrısı yapılmaz; tüm işlem `localhost` üzerindedir.
-- Bilgi tabanı ve vektör deposu yereldedir (`backend/storage/`, git'e girmez).
-- Kaynak kodda gizli anahtar bulunmaz; tüm ayarlar ortam değişkenlerinden okunur.
-- `data/kb/` altındaki dokümanlar **kurgusaldır**, gerçek bir şirketi temsil etmez.
+- No external API calls; everything runs on `localhost`.
+- The knowledge base and vector store stay local (`backend/storage/`, git-ignored).
+- No secrets in source; all settings are read from environment variables.
+- The documents under `data/kb/` are **fictional** and do not represent a real company.
 
-## Lisans
+## License
 
 [MIT](LICENSE) — © 2026 Yiğit ERDOĞAN
