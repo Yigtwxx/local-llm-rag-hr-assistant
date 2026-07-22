@@ -5,12 +5,16 @@ import { Logo } from '@/components/Logo';
 import { MessageBubble } from '@/components/MessageBubble';
 import ShinyText from '@/components/ShinyText';
 import SpotlightCard from '@/components/SpotlightCard';
+import { SuggestionChips } from '@/components/SuggestionChips';
 import { Button } from '@/components/ui/button';
 import { streamChat } from '@/lib/api';
 import { skinFor } from '@/lib/modelSkin';
 import type { ChatMessage, ModelInfo, Source } from '@/lib/types';
 
-const SUGGESTIONS = [
+// Shown on the empty screen, before there is anything to follow up on. The
+// chips that appear *after* an answer are a different thing entirely: they come
+// from the backend, chosen from the passages ranked near that answer.
+const STARTERS = [
   '3 yıldır çalışan birinin yıllık izin hakkı kaç gün?',
   'Haftada kaç gün ofisten çalışmam gerekiyor?',
   'Yurt içi seyahatte günlük harcırah ne kadar?',
@@ -74,17 +78,39 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
     wasBusy.current = busy;
   }, [busy]);
 
-  // Follow-the-stream is disengaged by an explicit upward gesture, not by
-  // measuring position on every scroll event — the smooth programmatic scroll
-  // fires those too, and would immediately switch itself off mid-answer.
+  // Follow-the-stream is disengaged by an upward gesture and re-engaged near
+  // the bottom. Direction is read from the scroll position rather than from the
+  // wheel, which was the only gesture this used to listen for: a touch drag, a
+  // dragged scrollbar and Page Up all scroll without ever firing `wheel`, so on
+  // a phone the transcript could not be read while an answer streamed — every
+  // token pulled the view straight back down.
+  //
+  // Deriving direction is safe even though the programmatic follow scroll fires
+  // `scroll` as well: that one only ever moves *towards* the bottom, so a
+  // decreasing scrollTop is always the user's doing.
+  const lastScrollTop = useRef(0);
+  const lastMaxScroll = useRef(0);
   const handleScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) setAtBottom(true);
-  };
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const maxScroll = Math.max(0, scrollHeight - clientHeight);
 
-  const handleWheel = (event: React.WheelEvent) => {
-    if (event.deltaY < 0) setAtBottom(false);
+    // A container that shrinks clamps `scrollTop` down to fit and reports that
+    // as a `scroll` event, indistinguishable from a gesture by position alone.
+    // It happens on the first question of every session: the empty state, four
+    // starter cards tall, is replaced by a transcript holding one short
+    // question. On a phone-sized viewport that collapse moved scrollTop 78 → 0
+    // and follow-the-stream switched itself off for the rest of the answer.
+    // The tell is that the scrollable range shrank too — the layout moved, not
+    // the reader.
+    const clamped = maxScroll < lastMaxScroll.current;
+
+    if (!clamped && scrollTop < lastScrollTop.current - 1) setAtBottom(false);
+    else if (maxScroll - scrollTop < 80) setAtBottom(true);
+
+    lastScrollTop.current = scrollTop;
+    lastMaxScroll.current = maxScroll;
   };
 
   const patchLast = useCallback((patch: Partial<ChatMessage>) => {
@@ -98,9 +124,27 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
     });
   }, []);
 
+  /**
+   * Guarded on a ref, not on the `busy` state it mirrors.
+   *
+   * `busy` is only visible to the next render, so two sends dispatched inside
+   * one task both read `false` and both start a stream. The second overwrites
+   * `abortRef`, which strands the first: nothing can cancel it any more and its
+   * tokens keep arriving into `patchLast`, appending one answer's text onto a
+   * different question's bubble. A ref closes the window at the point the
+   * decision is made rather than one render later.
+   */
+  const sending = useRef(false);
+
+  const finish = useCallback(() => {
+    sending.current = false;
+    setBusy(false);
+  }, []);
+
   const send = (question: string, modelOverride?: string) => {
     const trimmed = question.trim();
-    if (!trimmed || busy) return;
+    if (!trimmed || sending.current) return;
+    sending.current = true;
 
     const target = modelOverride ?? model;
     const answerId = nextId();
@@ -134,22 +178,27 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
           next[next.length - 1] = { ...last, content: last.content + text };
           return next;
         }),
-      onDone: (metrics, grounded) => {
-        patchLast({ streaming: false, metrics, grounded });
-        setBusy(false);
+      onDone: (metrics, grounded, suggestions) => {
+        patchLast({ streaming: false, metrics, grounded, suggestions });
+        finish();
       },
       onError: (message) => {
         patchLast({ streaming: false, error: message });
-        setBusy(false);
+        finish();
       },
     });
   };
 
+  // `stopped` rather than just clearing `streaming`: cancelled before the first
+  // token, the answer has no text, no stats, no sources and no error, so the
+  // bubble rendered as a blank card with nothing on it to read or act on — the
+  // question was gone and the only way back was to type it again. The flag is
+  // what lets the bubble say it was stopped and offer the question back.
   const stop = useCallback(() => {
     abortRef.current?.();
-    patchLast({ streaming: false });
-    setBusy(false);
-  }, [patchLast]);
+    patchLast({ streaming: false, stopped: true });
+    finish();
+  }, [finish, patchLast]);
 
   // Esc cancels a running answer — the stop button is a mouse trip away, and
   // a wrong question is usually obvious within the first line. `stop` is
@@ -169,12 +218,18 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
 
   const skin = skinFor(models.find((candidate) => candidate.name === model));
 
+  // Chips belong to the newest answer, and only once it has finished streaming.
+  const newest = messages[messages.length - 1];
+  const lastAnswer =
+    newest?.role === 'assistant' && !newest.streaming && !newest.error
+      ? newest
+      : undefined;
+
   return (
     <div className="relative flex h-full flex-col">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        onWheel={handleWheel}
         className="scroll-slim flex-1 overflow-y-auto"
       >
         <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-5 py-6">
@@ -198,7 +253,7 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
                   numbered index under the flat one. */}
               {skin.suggestions === 'cards' ? (
                 <div className="grid w-full max-w-xl gap-2.5 sm:grid-cols-2">
-                  {SUGGESTIONS.map((suggestion, index) => (
+                  {STARTERS.map((suggestion, index) => (
                     <SpotlightCard
                       key={suggestion}
                       className="animate-rise transition-all duration-200 ease-out hover:elevate-lift hover:border-primary/30 motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0"
@@ -216,7 +271,7 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
                 </div>
               ) : (
                 <ul className="w-full max-w-xl divide-y divide-border border-y border-border text-left">
-                  {SUGGESTIONS.map((suggestion, index) => (
+                  {STARTERS.map((suggestion, index) => (
                     <li
                       key={suggestion}
                       className="animate-rise"
@@ -226,8 +281,12 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
                         onClick={() => send(suggestion)}
                         className="group/row flex w-full items-center gap-3 px-3 py-3 text-left text-xs leading-relaxed text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                       >
+                        {/* Same reason as the chip label: at 10px an alpha on
+                            top of the muted token lands well under WCAG AA.
+                            `aria-hidden` keeps it out of the a11y tree but it
+                            is still text a person has to read. */}
                         <span
-                          className="tabular shrink-0 font-mono text-[10px] text-muted-foreground/60"
+                          className="tabular shrink-0 font-mono text-[10px] text-muted-foreground"
                           aria-hidden
                         >
                           {String(index + 1).padStart(2, '0')}
@@ -255,23 +314,39 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
                   focused={message.id === focusedId}
                 />
               ))}
+
+              {/* Only under the newest answer. Chips on every past message
+                  would turn the transcript into a wall of buttons and offer
+                  routes out of a question the user has already moved past. */}
+              <SuggestionChips
+                suggestions={lastAnswer?.suggestions ?? []}
+                onSelect={send}
+                disabled={busy}
+              />
             </div>
           )}
         </div>
       </div>
 
-      {!atBottom && messages.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setAtBottom(true)}
-          aria-label="En alta in"
-          className="avatar-shape elevate-lift absolute bottom-32 left-1/2 z-10 flex size-8 -translate-x-1/2 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <ArrowDown className="size-4" aria-hidden />
-        </button>
-      )}
+      {/* Anchored to the composer, not to the panel. A fixed offset from the
+          bottom assumed a fixed composer height and it has neither: on a phone
+          it landed on the metrics row and covered the tokens-per-second
+          reading, and once the textarea grew towards its 160px cap the button
+          ended up behind the composer entirely, still visible and no longer
+          clickable. `bottom-full` keeps the same gap above whatever height the
+          composer currently has. */}
+      <div className="relative shrink-0 px-5 pb-4">
+        {!atBottom && messages.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setAtBottom(true)}
+            aria-label="En alta in"
+            className="avatar-shape elevate-lift absolute bottom-full left-1/2 z-10 mb-3 flex size-8 -translate-x-1/2 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <ArrowDown className="size-4" aria-hidden />
+          </button>
+        )}
 
-      <div className="shrink-0 px-5 pb-4">
         <div className="mx-auto w-full max-w-3xl">
           <BorderGlow
             borderRadius={skin.composerRadius}
@@ -286,6 +361,11 @@ export function ChatPanel({ model, models, onSources, onBusyChange }: ChatPanelP
             <div className="flex items-end gap-2 p-2">
               <textarea
                 ref={inputRef}
+                // Named so the browser can associate the field with itself
+                // across reloads; without either attribute Chrome reports the
+                // composer as an unidentified form field.
+                id="question"
+                name="question"
                 rows={1}
                 value={draft}
                 onChange={(event) => {
