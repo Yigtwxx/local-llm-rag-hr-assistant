@@ -1,0 +1,40 @@
+# Version control
+.git
+.gitignore
+
+# Secrets — must never enter the build context
+.env
+.env.local
+*.pem
+*.key
+secrets/
+
+# Source assignment brief — not ours to redistribute
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# The vector store is rebuilt inside the container, never copied in
+backend/storage/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Docs and tooling that no image needs
+docs/
+scripts/
+.claude/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
