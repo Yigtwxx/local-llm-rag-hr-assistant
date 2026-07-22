@@ -33,6 +33,7 @@ data/kb/          Turkish HR knowledge base (Markdown) — the only corpus
 docs/             Reports, slides, UI screenshots
 frontend/src/     UI; lib/modelSkin.ts drives the per-model visual identity
 scripts/dev.sh    Runs backend + frontend together (dev.bat on Windows)
+docker-compose.yml  Demo stack: API + built UI behind nginx; Ollama stays on the host
 ```
 
 ## Commands
@@ -54,6 +55,10 @@ npm run build
 
 # Both at once
 ./scripts/dev.sh                      # scripts\dev.bat on Windows
+
+# Docker (from the repository root)
+docker compose up --build             # UI :8180 · API :8100
+docker compose down                   # add -v to drop the index volume too
 ```
 
 `tsc --noEmit` resolves the root `tsconfig.json`, which references projects and
@@ -68,6 +73,8 @@ pytest green, `tsc -b` clean, vitest green, `npm run build` clean.
 
 - Communication, reports, docs, UI copy: **Turkish**.
 - Code, identifiers, comments, commit messages: **English**.
+- `README.md` is the one exception: English throughout, since it is the repo's
+  public face. Match the surrounding language when editing it.
 
 ## Retrieval rules
 
@@ -83,6 +90,30 @@ pytest green, `tsc -b` clean, vitest green, `npm run build` clean.
   threshold. Re-run `bench/calibrate_threshold.py`.
 - `qwen3.5` has thinking on by default, `gemma4` does not. Every call sends
   `think=False` explicitly; without it the speed comparison is meaningless.
+
+## Docker rules
+
+- **Ollama is never containerised.** Inside a container it cannot reach Metal on
+  macOS, falls back to CPU, and every number in the reports stops describing the
+  system. The backend talks to the host through
+  `DOCKER_OLLAMA_HOST` (default `http://host.docker.internal:11434`), with
+  `extra_hosts: host-gateway` so Linux works too.
+- **Ports 8180 (UI) and 8100 (API) were chosen, not defaulted.** 8000 and 3000
+  belong to another project's compose on this machine, 8000 and 5173 to
+  `scripts/dev.sh`. Ask before changing them. Both are overridable via
+  `WEB_PORT` / `BACKEND_HOST_PORT`.
+- **Never interpolate an existing `.env` key into compose.** Compose reads the
+  repo's `.env`, where `OLLAMA_HOST` points at localhost — correct on the host,
+  wrong inside a container. Docker-only settings use a `DOCKER_` prefix.
+- nginx resolves the backend through a variable plus `resolver 127.0.0.11`, not
+  a literal upstream name. With a literal name nginx refuses to start until the
+  backend is resolvable, then caches its first IP across restarts.
+- `proxy_buffering off` in `frontend/nginx.conf` is what keeps `/api/chat`
+  streaming. Without it the answer arrives as one block and the UI looks frozen.
+- The index lives in the `chroma-storage` volume; the entrypoint builds it on
+  first start only. After changing the knowledge base, chunking or the embedding
+  model, run `docker compose down -v` — otherwise the stale index survives.
+- **Stop the stack before benchmarking** (`docker compose down`); see below.
 
 ## Benchmark rules
 
