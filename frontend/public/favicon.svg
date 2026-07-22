@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Static twin of src/components/Logo.tsx. A favicon cannot read CSS
+       variables, so the navy and gold are resolved here by hand. -->
+  <rect width="24" height="24" rx="5.5" fill="#16293f"/>
+  <rect x="10.4" y="5.1" width="9.6" height="3.9" rx="1.35" stroke="#ffffff" stroke-width="1.3" opacity="0.32"/>
+  <rect x="7.2" y="10.05" width="9.6" height="3.9" rx="1.35" stroke="#ffffff" stroke-width="1.3" opacity="0.6"/>
+  <rect x="4" y="15" width="9.6" height="4" rx="1.4" fill="#ffffff"/>
+  <rect x="5.8" y="16.55" width="3.6" height="0.95" rx="0.475" fill="#e0a92a"/>
+</svg>

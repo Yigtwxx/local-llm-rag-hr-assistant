@@ -1,0 +1,31 @@
+# Secrets — never commit
+.env
+.env.local
+*.pem
+*.key
+secrets/
+
+# Source assignment brief — not our work to redistribute
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Vector store (regenerate with `uv run python -m app.ingest`)
+backend/storage/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

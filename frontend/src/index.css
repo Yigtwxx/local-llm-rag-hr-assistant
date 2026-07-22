@@ -1,0 +1,355 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+    --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-gold: var(--gold);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ------------------------------------------------------------------ */
+/* Palette                                                             */
+/* Deliberately not the violet/indigo that reads as "an AI product".   */
+/* The base is a low-chroma navy — chroma is held near 0.10 so it      */
+/* stays navy instead of drifting into indigo — and colour is spent    */
+/* only where it means something: gold marks the retrieved passage,    */
+/* green means ready, amber means degraded, red means failed.          */
+/* ------------------------------------------------------------------ */
+
+:root {
+    --background: oklch(0.985 0.003 250);
+    --foreground: oklch(0.17 0.015 250);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.17 0.015 250);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.17 0.015 250);
+    --primary: oklch(0.4 0.1 250);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.965 0.008 250);
+    --secondary-foreground: oklch(0.3 0.045 250);
+    --muted: oklch(0.965 0.006 250);
+    --muted-foreground: oklch(0.5 0.022 250);
+    --accent: oklch(0.955 0.016 250);
+    --accent-foreground: oklch(0.34 0.09 250);
+    --gold: oklch(0.72 0.13 85);
+    --destructive: oklch(0.55 0.2 27);
+    --success: oklch(0.52 0.13 155);
+    --success-foreground: oklch(0.99 0 0);
+    --warning: oklch(0.55 0.14 70);
+    --warning-foreground: oklch(0.99 0 0);
+    --border: oklch(0.915 0.008 250);
+    --input: oklch(0.9 0.01 250);
+    --ring: oklch(0.5 0.1 250);
+    --chart-1: oklch(0.42 0.11 250);
+    --chart-2: oklch(0.6 0.11 190);
+    --chart-3: oklch(0.55 0.12 150);
+    --chart-4: oklch(0.68 0.13 80);
+    --chart-5: oklch(0.55 0.17 25);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.975 0.005 250);
+    --sidebar-foreground: oklch(0.17 0.015 250);
+    --sidebar-primary: oklch(0.4 0.1 250);
+    --sidebar-primary-foreground: oklch(0.99 0 0);
+    --sidebar-accent: oklch(0.955 0.016 250);
+    --sidebar-accent-foreground: oklch(0.34 0.09 250);
+    --sidebar-border: oklch(0.915 0.008 250);
+    --sidebar-ring: oklch(0.5 0.1 250);
+
+    /* ShinyText sweep. In light mode a white shine would erase the letters
+       against the page, so the highlight is the gold instead. */
+    --shiny-base: oklch(0.28 0.03 250);
+    --shiny-shine: oklch(0.76 0.14 85);
+
+    /* Form language. These four are what a skin re-shapes: how round a
+       corner is, how far a surface floats off the page, and how round an
+       avatar reads. Everything that draws a surface reads them, so a skin
+       changes the whole silhouette by setting four values. */
+    --avatar-radius: 9999px;
+    --elevation:
+        0 1px 2px oklch(0.17 0.015 250 / 0.05), 0 4px 14px oklch(0.17 0.015 250 / 0.06);
+    --elevation-lift:
+        0 2px 4px oklch(0.17 0.015 250 / 0.06), 0 10px 24px oklch(0.17 0.015 250 / 0.09);
+}
+
+.dark {
+    --background: oklch(0.16 0.01 250);
+    --foreground: oklch(0.97 0.005 250);
+    --card: oklch(0.21 0.013 250);
+    --card-foreground: oklch(0.97 0.005 250);
+    --popover: oklch(0.22 0.014 250);
+    --popover-foreground: oklch(0.97 0.005 250);
+    --primary: oklch(0.52 0.12 252);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.27 0.016 250);
+    --secondary-foreground: oklch(0.96 0.005 250);
+    --muted: oklch(0.26 0.014 250);
+    --muted-foreground: oklch(0.7 0.02 250);
+    --accent: oklch(0.3 0.035 250);
+    --accent-foreground: oklch(0.9 0.04 250);
+    --gold: oklch(0.82 0.13 85);
+    --destructive: oklch(0.68 0.19 25);
+    --success: oklch(0.75 0.15 158);
+    --success-foreground: oklch(0.16 0.02 158);
+    --warning: oklch(0.8 0.14 78);
+    --warning-foreground: oklch(0.18 0.03 78);
+    --border: oklch(1 0 0 / 11%);
+    --input: oklch(1 0 0 / 16%);
+    --ring: oklch(0.58 0.11 250);
+    --chart-1: oklch(0.6 0.13 252);
+    --chart-2: oklch(0.72 0.12 190);
+    --chart-3: oklch(0.7 0.13 150);
+    --chart-4: oklch(0.8 0.13 82);
+    --chart-5: oklch(0.65 0.16 25);
+    --sidebar: oklch(0.19 0.012 250);
+    --sidebar-foreground: oklch(0.97 0.005 250);
+    --sidebar-primary: oklch(0.52 0.12 252);
+    --sidebar-primary-foreground: oklch(0.99 0 0);
+    --sidebar-accent: oklch(0.3 0.035 250);
+    --sidebar-accent-foreground: oklch(0.9 0.04 250);
+    --sidebar-border: oklch(1 0 0 / 11%);
+    --sidebar-ring: oklch(0.58 0.11 250);
+
+    /* On a dark surface the requested mix works literally: white carrying
+       just enough yellow to read warm rather than clinical. */
+    --shiny-base: oklch(0.62 0.015 250);
+    --shiny-shine: color-mix(in srgb, #ffffff 90%, #ffd400 10%);
+
+    /* A tinted shadow disappears on a dark page; only opacity separates
+       the layers here. */
+    --elevation: 0 1px 2px oklch(0 0 0 / 0.4), 0 4px 14px oklch(0 0 0 / 0.34);
+    --elevation-lift: 0 2px 6px oklch(0 0 0 / 0.45), 0 12px 28px oklch(0 0 0 / 0.42);
+}
+
+/* ------------------------------------------------------------------ */
+/* Model skins                                                         */
+/* Each benchmarked model drives its own accent, so switching between  */
+/* them re-skins the whole surface instead of just flipping a label.   */
+/* The primary model uses the base palette above; the secondary one    */
+/* overrides it here.                                                  */
+/*                                                                     */
+/* Keyed off `ModelInfo.role` from the backend rather than parsing the */
+/* model name, so renaming a model cannot silently break the skin.     */
+/*                                                                     */
+/* The compound selectors are deliberate: `.dark` alone would outrank  */
+/* a bare `.skin-secondary` and the dark theme would keep the navy.    */
+/*                                                                     */
+/* Colour alone was too quiet to tell the two apart at a glance, so    */
+/* the skins also diverge in form: the primary one is soft-cornered    */
+/* and floats its surfaces on a shadow, the secondary one is squared   */
+/* off and flat, holding its surfaces down with a harder edge instead. */
+/* Both silhouettes come out of `--radius` / `--elevation` / `--border`*/
+/* so no component needs to know which skin is active.                 */
+/* ------------------------------------------------------------------ */
+
+.skin-secondary {
+    --primary: oklch(0.44 0.085 195);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary-foreground: oklch(0.32 0.04 195);
+    --accent: oklch(0.955 0.016 195);
+    --accent-foreground: oklch(0.36 0.075 195);
+    --ring: oklch(0.53 0.085 195);
+    --sidebar-primary: oklch(0.44 0.085 195);
+    --sidebar-accent: oklch(0.955 0.016 195);
+    --sidebar-accent-foreground: oklch(0.36 0.075 195);
+    --sidebar-ring: oklch(0.53 0.085 195);
+    --shiny-base: oklch(0.3 0.028 195);
+
+    /* Not zero: a hairline radius still catches the light on a 1px border,
+       where a true right angle looks like an unstyled element. */
+    --radius: 0.1875rem;
+    --avatar-radius: 0.1875rem;
+    --elevation: none;
+    --elevation-lift: none;
+    /* With the shadow gone, the edge has to carry the separation on its
+       own, so it is drawn a step darker than the primary skin's. */
+    --border: oklch(0.875 0.014 195);
+    --input: oklch(0.84 0.018 195);
+    --sidebar-border: oklch(0.875 0.014 195);
+}
+
+.dark .skin-secondary,
+.dark.skin-secondary {
+    --primary: oklch(0.56 0.1 195);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary-foreground: oklch(0.96 0.005 195);
+    --accent: oklch(0.3 0.035 195);
+    --accent-foreground: oklch(0.9 0.04 195);
+    --ring: oklch(0.6 0.09 195);
+    --sidebar-primary: oklch(0.56 0.1 195);
+    --sidebar-accent: oklch(0.3 0.035 195);
+    --sidebar-accent-foreground: oklch(0.9 0.04 195);
+    --sidebar-ring: oklch(0.6 0.09 195);
+    --shiny-base: oklch(0.62 0.015 195);
+
+    --radius: 0.1875rem;
+    --avatar-radius: 0.1875rem;
+    --elevation: none;
+    --elevation-lift: none;
+    --border: oklch(1 0 0 / 20%);
+    --input: oklch(1 0 0 / 26%);
+    --sidebar-border: oklch(1 0 0 / 20%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Utilities                                                           */
+/* ------------------------------------------------------------------ */
+
+/* Metrics update while an answer streams. Proportional digits make the
+   numbers jitter sideways on every token; tabular figures hold still. */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Fades scrolled content out under the sticky composer instead of
+   letting it collide with a hard border. */
+@utility fade-bottom {
+  mask-image: linear-gradient(to bottom, black calc(100% - 2rem), transparent);
+}
+
+/* Elevation is a skin decision, not a per-component one, so surfaces ask
+   for "raised" rather than for a specific shadow. In the flat skin both of
+   these resolve to `none` and the border does the work. */
+@utility elevate {
+  box-shadow: var(--elevation);
+}
+
+@utility elevate-lift {
+  box-shadow: var(--elevation-lift);
+}
+
+/* Avatars are the one place the corner radius has to be set outright —
+   `rounded-full` would stay a circle in the squared-off skin. */
+@utility avatar-shape {
+  border-radius: var(--avatar-radius);
+}
+
+/* The default scrollbar is heavy enough to read as a UI element of its
+   own next to a narrow source rail. */
+@utility scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+/* ------------------------------------------------------------------ */
+/* Motion                                                              */
+/* Deliberately restrained: a short entrance for new content and a     */
+/* caret that marks live generation. Every animation is suppressed     */
+/* under `prefers-reduced-motion`.                                     */
+/* ------------------------------------------------------------------ */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0.1;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-primary) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@utility animate-rise {
+  animation: rise-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility animate-caret {
+  animation: caret-blink 1.05s steps(1, end) infinite;
+}
+
+@utility animate-live {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,10 @@
+KAYNAK
+
+{context}
+
+---
+
+SORU: {question}
+
+Yukarıdaki kaynaklara dayanarak soruyu yanıtla. Kaynaklarda cevap yoksa
+bunu açıkça belirt.

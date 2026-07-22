@@ -1,0 +1,122 @@
+# Shared prompt set — every model answers exactly the same questions.
+# Derived from section 7 of the assignment document ("Ölçüm İçin Ortak Prompt Seti"),
+# extended with a RAG suite that exercises grounding.
+#
+# expect_all  : every string must appear in the answer (case-insensitive)
+# expect_any  : at least one must appear
+# expect_none : none may appear — used to catch hallucination
+
+generation:
+  - id: knowledge
+    label: Bilgi / Mantık
+    prompt: >-
+      Türkiye'nin başkenti neresidir ve en kalabalık 3 şehrini listele.
+    expect_all: ["ankara", "istanbul", "izmir"]
+
+  - id: code
+    label: Kod Üretimi
+    prompt: >-
+      Python dilinde, verilen bir listenin içindeki mükemmel sayıları bulan bir
+      fonksiyon yaz ve örnekle.
+    expect_all: ["def"]
+    expect_any: ["mükemmel", "perfect"]
+
+  - id: summarize
+    label: Özetleme / Bağlam
+    prompt: >-
+      Aşağıdaki metni tek cümleyle, profesyonel bir dille özetle:
+
+      Şirketimiz bu yıl uzaktan çalışma modelini kalıcı hâle getirme kararı aldı.
+      Karar, çalışan memnuniyeti anketlerinde ofis dışı çalışmanın verimliliği
+      artırdığı yönündeki bulgulara dayanıyor. Ofisler tamamen kapatılmayacak;
+      ekipler haftada iki gün bir araya gelmeye devam edecek. İnsan kaynakları
+      birimi, geçiş sürecinde ekip yöneticilerine düzenli eğitim verecek ve
+      yeni bir performans değerlendirme çerçevesi devreye alınacak.
+    expect_any: ["uzaktan", "hibrit"]
+
+rag:
+  - id: rag-izin-hakki
+    question: 3 yıldır çalışan bir personelin yıllık izin hakkı kaç gündür?
+    expect_all: ["16"]
+    grounded: true
+
+  - id: rag-babalik
+    question: Eşim doğum yapacak, kaç gün izin kullanabilirim?
+    expect_all: ["10"]
+    grounded: true
+
+  - id: rag-izin-devir
+    question: Kullanmadığım yıllık izinlerimin kaç günü gelecek yıla devreder ve son kullanma tarihi nedir?
+    expect_all: ["10"]
+    expect_any: ["30 haziran", "haziran"]
+    grounded: true
+
+  - id: rag-ofis-gunu
+    question: Haftada kaç gün ofisten çalışmam gerekiyor?
+    expect_all: ["2"]
+    grounded: true
+
+  - id: rag-fazla-mesai
+    question: Hafta sonu fazla mesai ücreti nasıl hesaplanır?
+    expect_any: ["2 kat", "iki kat", "2 katı"]
+    grounded: true
+
+  - id: rag-harcirah
+    question: Yurt içi seyahatte günlük yemek harcırahı ne kadar?
+    expect_all: ["750"]
+    grounded: true
+
+  - id: rag-egitim-butcesi
+    question: Yıllık eğitim bütçem ne kadar ve kullanmazsam devreder mi?
+    expect_all: ["25.000"]
+    expect_any: ["devretmez", "devretmiyor", "yanar"]
+    grounded: true
+
+  - id: rag-deneme-suresi
+    question: Deneme süresi ne kadar ve uzatılabilir mi?
+    expect_all: ["2 ay"]
+    expect_any: ["1 ay", "3 ay"]
+    grounded: true
+
+  # --- Out-of-scope: the correct behaviour is to refuse, not to answer. ---
+  - id: rag-kapsam-disi-arac
+    question: Şirket çalışanlara şirket aracı tahsis ediyor mu, hangi segment araçlar veriliyor?
+    grounded: false
+
+  - id: rag-kapsam-disi-hisse
+    question: Çalışanlara hisse senedi opsiyonu (stock option) veriliyor mu, vesting süresi kaç yıl?
+    grounded: false
+
+  - id: rag-kapsam-disi-emeklilik
+    question: Bireysel emeklilik sisteminde şirket katkı payı yüzde kaç?
+    grounded: false
+
+# Threshold calibration set. Used only by `calibrate_threshold.py`, never by the
+# model benchmark.
+#
+# These are deliberately written the way a hurried employee actually types —
+# three or four words, no context. The first calibration used only the long,
+# well-formed questions above and produced a threshold of 0.52, which then
+# rejected "Harcırah ne kadar?" even though the answer sits in the documents.
+# A threshold calibrated on one phrasing style does not generalise to another,
+# so both styles belong in the set.
+calibration:
+  in_scope:
+    - Harcırah ne kadar?
+    - Babalık izni kaç gün?
+    - Yıllık izin kaç gün?
+    - Haftada kaç gün ofisteyim?
+    - Fazla mesai ücreti nedir?
+    - İzin devri var mı?
+    - Deneme süresi ne kadar?
+    - Eğitim bütçesi ne kadar?
+    - Yemek kartı limiti nedir?
+    - Doğum izni
+    - uzaktan çalışma kuralları
+  out_of_scope:
+    - Şirket aracı
+    - Hisse opsiyonu
+    - Kreş yardımı var mı?
+    - Servis güzergâhı nedir?
+    - Yıllık prim yüzdesi ne kadar?
+    - Yurt dışı ofis transferi mümkün mü?

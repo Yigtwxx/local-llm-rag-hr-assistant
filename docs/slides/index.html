@@ -1,0 +1,784 @@
+<style>
+  :root {
+    --ink: #0f1419;
+    --ink-2: #1c242e;
+    --paper: #fafaf9;
+    --paper-2: #f1f1ef;
+    --muted: #5a6470;
+    --line: #d8dade;
+    --qwen: #2563c9;
+    --gemma: #c2650b;
+    --good: #17795e;
+    --warn: #b45309;
+
+    --bg: var(--paper);
+    --fg: var(--ink);
+    --dim: var(--muted);
+    --rule: var(--line);
+    --card: #ffffff;
+
+    --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: var(--ink);
+      --fg: #eef1f4;
+      --dim: #939da9;
+      --rule: #29323d;
+      --card: var(--ink-2);
+      --qwen: #6ea3f5;
+      --gemma: #e8973a;
+      --good: #4cbb98;
+      --warn: #e0a33c;
+    }
+  }
+
+  :root[data-theme='dark'] {
+    --bg: var(--ink);
+    --fg: #eef1f4;
+    --dim: #939da9;
+    --rule: #29323d;
+    --card: var(--ink-2);
+    --qwen: #6ea3f5;
+    --gemma: #e8973a;
+    --good: #4cbb98;
+    --warn: #e0a33c;
+  }
+
+  :root[data-theme='light'] {
+    --bg: var(--paper);
+    --fg: var(--ink);
+    --dim: var(--muted);
+    --rule: var(--line);
+    --card: #ffffff;
+    --qwen: #2563c9;
+    --gemma: #c2650b;
+    --good: #17795e;
+    --warn: #b45309;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Deck chrome ---------- */
+
+  .deck { position: relative; }
+
+  .rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: var(--qwen);
+    z-index: 50;
+    transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .nav {
+    position: fixed;
+    right: 24px;
+    bottom: 20px;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+  }
+
+  .nav button {
+    font: inherit;
+    color: inherit;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    width: 28px;
+    height: 26px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .nav button:hover { color: var(--fg); border-color: var(--dim); }
+  .nav button:focus-visible { outline: 2px solid var(--qwen); outline-offset: 2px; }
+
+  /* ---------- Slides ---------- */
+
+  .slide {
+    display: none;
+    min-height: 100vh;
+    padding: 7vh 8vw 9vh;
+    max-width: 1180px;
+    margin: 0 auto;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .slide.on { display: flex; animation: enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(30px, 4.4vw, 52px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+
+  h2 {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 24px;
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  p { line-height: 1.6; margin: 0 0 14px; max-width: 62ch; }
+  .lead { font-size: clamp(16px, 1.5vw, 19px); color: var(--dim); max-width: 60ch; }
+  strong { font-weight: 650; }
+
+  .grid { display: grid; gap: 18px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+
+  .card p { font-size: 14px; color: var(--dim); margin: 0; }
+
+  /* ---------- Data ---------- */
+
+  .stat { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .stat .n { font-size: clamp(26px, 3.4vw, 40px); font-weight: 600; letter-spacing: -0.02em; }
+  .stat .u { font-size: 13px; color: var(--dim); margin-left: 4px; }
+  .stat .k { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-top: 6px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+
+  th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 500;
+  }
+
+  td.num, th.num { text-align: right; font-family: var(--mono); }
+  .scroll { overflow-x: auto; }
+
+  .bar { height: 8px; border-radius: 4px; background: var(--qwen); }
+  .bar.b2 { background: var(--gemma); }
+
+  .barrow { display: grid; grid-template-columns: 108px 1fr 92px; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .barrow .lbl { font-family: var(--mono); font-size: 12px; }
+  .barrow .val { font-family: var(--mono); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--rule);
+    color: var(--dim);
+  }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot.q { background: var(--qwen); }
+  .dot.g { background: var(--gemma); }
+
+  .win { color: var(--good); font-weight: 600; }
+  .note { font-size: 13px; color: var(--dim); border-left: 2px solid var(--rule); padding-left: 14px; }
+
+  ul { margin: 0; padding-left: 0; list-style: none; }
+  li { position: relative; padding-left: 18px; margin-bottom: 9px; line-height: 1.55; }
+  li::before { content: '—'; position: absolute; left: 0; color: var(--dim); font-family: var(--mono); }
+
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px; }
+
+  .flow { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; }
+  .flow .step { flex: 1; min-width: 130px; border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; background: var(--card); }
+  .flow .step b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .flow .step span { color: var(--dim); font-size: 11px; line-height: 1.45; }
+
+  .kicker { font-family: var(--mono); font-size: 13px; color: var(--dim); margin-top: 26px; }
+
+  /* ---------- Print ---------- */
+
+  @page { size: 297mm 167mm; margin: 0; }
+
+  @media print {
+    :root { --bg: #fff; --fg: #0f1419; --card: #fff; --rule: #d8dade; --dim: #5a6470; }
+    .nav, .rail { display: none !important; }
+    .slide { display: flex !important; page-break-after: always; min-height: 160mm; padding: 12mm 16mm; animation: none; }
+    body { background: #fff; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+
+<div class="rail" id="rail"></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 — Cover -->
+  <section class="slide on">
+    <div class="eyebrow">Staj Projesi · Temmuz 2026</div>
+    <h1>Lokalde LLM Çalıştırma</h1>
+    <p class="lead">
+      İnternete çıkmadan çalışan bir dil modeli altyapısının kurulabilirliği,
+      maliyeti ve ölçülen performansı — ve bunun üzerine kurulmuş bir
+      doküman soru-cevap sistemi.
+    </p>
+    <div class="grid g4" style="margin-top:38px">
+      <div class="stat"><div class="n">2</div><div class="k">Model kıyaslandı</div></div>
+      <div class="stat"><div class="n">84</div><div class="k">Ölçülen cevap</div></div>
+      <div class="stat"><div class="n">37</div><div class="k">İndekslenen parça</div></div>
+      <div class="stat"><div class="n">0</div><div class="k">Dışarı giden istek</div></div>
+    </div>
+    <div class="kicker">Yiğit Erdoğan · Apple M4 Pro · 48 GB unified memory</div>
+  </section>
+
+  <!-- 2 — Why local -->
+  <section class="slide">
+    <div class="eyebrow">Motivasyon</div>
+    <h2>Neden lokal?</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Veri gizliliği</h3>
+        <p>Personel ve müşteri verisi cihazdan hiç çıkmaz. Veriyi hiç
+        göndermemek, en güçlü uyum argümanıdır.</p>
+      </div>
+      <div class="card">
+        <h3>Kesintisiz erişim</h3>
+        <p>Sağlayıcı kesintisi, kota limiti veya fiyat değişikliği sistemi
+        etkilemez. İnternet kapalıyken de çalışır.</p>
+      </div>
+      <div class="card">
+        <h3>Öngörülebilir maliyet</h3>
+        <p>İstek başına ödeme yerine tek seferlik donanım yatırımı. Yoğun
+        kullanımda amortisman lehte döner.</p>
+      </div>
+      <div class="card">
+        <h3>Düşük gecikme</h3>
+        <p>Yerel ağdaki veri tabanları ve iç sistemlerle ağ turu olmadan
+        çalışır.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:26px">
+      Karşı tarafı da söylemek gerekir: 9–12B lokal modeller, en büyük ticari
+      modellerin çok adımlı akıl yürütme performansını yakalayamaz. Doküman
+      soru-cevabında fark küçüktür; derin analizde belirgindir.
+    </p>
+  </section>
+
+  <!-- 3 — Memory -->
+  <section class="slide">
+    <div class="eyebrow">Donanım</div>
+    <h2>Belleğe ne sığar?</h2>
+    <p class="lead">Model ağırlıkları belleğe yüklenmek zorundadır. Quantization
+    bu ihtiyacı dörtte bire indirir.</p>
+    <div class="scroll" style="margin-top:20px">
+      <table>
+        <thead>
+          <tr><th>Veri tipi</th><th class="num">Parametre başına</th><th class="num">9B model</th><th>Değerlendirme</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>FP32</td><td class="num">4 byte</td><td class="num">~36 GB</td><td>Çıkarım için gereksiz</td></tr>
+          <tr><td>FP16 / BF16</td><td class="num">2 byte</td><td class="num">~18 GB</td><td>Referans kalite</td></tr>
+          <tr><td>INT8 (q8_0)</td><td class="num">~1 byte</td><td class="num">~9 GB</td><td>Kayıp fark edilmez</td></tr>
+          <tr><td><strong>4-bit (q4_K_M)</strong></td><td class="num">~0,5 byte</td><td class="num"><strong>~5 GB</strong></td><td class="win">Denge noktası</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" style="margin-top:24px">
+      <strong>En sık atlanan kalem:</strong> ölçümlerimde disk boyutu 6,6 GB olan
+      model, çalışırken 13,7 GB tuttu. Fark KV cache ve çalışma zamanı yükünden
+      gelir. Planlama yaparken disk boyutunun iki katını hesaplayın.
+    </p>
+  </section>
+
+  <!-- 4 — Unified memory -->
+  <section class="slide">
+    <div class="eyebrow">Donanım · Mimari farkı</div>
+    <h2>VRAM mi, unified memory mi?</h2>
+    <div class="grid g2" style="margin-top:8px">
+      <div class="card">
+        <h3>NVIDIA</h3>
+        <p style="margin-bottom:10px">VRAM ve sistem RAM'i <strong>ayrıdır</strong>.
+        Model VRAM'e sığmazsa performans sert düşer — sığar ya da sığmaz.</p>
+        <p>Yüksek bant genişliği ve ham hesaplama gücü. CUDA ekosistemi olgun.</p>
+      </div>
+      <div class="card">
+        <h3>Apple Silicon</h3>
+        <p style="margin-bottom:10px">Tek bellek havuzu; GPU bu havuzun büyük
+        bölümüne <strong>doğrudan erişir</strong>.</p>
+        <p>48 GB'lık bir Mac, 24 GB VRAM'li bir karttan daha büyük modeli belleğe
+        sığdırır — ama ham hesap gücünde geride kalır.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:26px">
+      Apple Silicon'da "kaç GB VRAM" sorusu anlamsızdır. Doğru soru: toplam
+      RAM'in ne kadarını modele ayırabiliyorsunuz? macOS bu havuzun yaklaşık
+      %75'ini GPU'ya tahsis edebilir.
+    </p>
+  </section>
+
+  <!-- 5 — Model selection -->
+  <section class="slide">
+    <div class="eyebrow">Seçim</div>
+    <h2>Hangi modeller, neden?</h2>
+    <p class="lead">
+      Staj dokümanı örnek olarak Llama 3 8B ve Gemma 2 9B veriyordu. Bu modeller
+      2024 tarihli; aynı boyut sınıfında güncel halefleri var. Rapora eskimiş
+      bir kıyas koymamak için liste yeniden araştırıldı.
+    </p>
+    <div class="scroll" style="margin-top:20px">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Üretici</th><th class="num">Parametre</th><th class="num">Boyut</th><th>Rol</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="dot q"></span> <code>qwen3.5:9b</code></td>
+            <td>Alibaba</td><td class="num">9B</td><td class="num">6,6 GB</td>
+            <td>Hibrit doğrusal dikkat</td>
+          </tr>
+          <tr>
+            <td><span class="dot g"></span> <code>gemma4:12b</code></td>
+            <td>Google</td><td class="num">12B</td><td class="num">7,6 GB</td>
+            <td>Tam dikkat</td>
+          </tr>
+          <tr>
+            <td><code>qwen3-embedding:0.6b</code></td>
+            <td>Alibaba</td><td class="num">0,6B</td><td class="num">639 MB</td>
+            <td>1024 boyut · 32K bağlam</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid g2" style="margin-top:24px">
+      <p class="note">
+        <strong>Sohbet modelleri</strong> iki eksende ayrışıyor: farklı üretici ve
+        farklı dikkat mimarisi. Toplam ~14 GB olduğu için ikisi aynı anda bellekte
+        tutulup canlı karşılaştırılabiliyor.
+      </p>
+      <p class="note">
+        <strong>Embedding</strong> seçiminde belirleyici olan Türkçe idi. Rakip
+        <code>embeddinggemma</code>'nın 2K bağlamı yetersiz: Türkçe sondan eklemeli
+        olduğu için aynı içerik %20–30 fazla token tutar.
+      </p>
+    </div>
+  </section>
+
+  <!-- 6 — Methodology -->
+  <section class="slide">
+    <div class="eyebrow">Metodoloji</div>
+    <h2>Ölçüm nasıl adil hâle getirildi?</h2>
+    <div class="grid g2">
+      <div>
+        <ul>
+          <li>Her model <strong>baytı baytına aynı</strong> prompt'ları alır</li>
+          <li><code>temperature=0</code>, <code>seed=42</code>, <code>num_predict=1024</code> her çağrıda açıkça gönderilir</li>
+          <li>Her iki model de <code>q4_K_M</code> — farklı quantization kıyası geçersiz kılar</li>
+          <li>Isınma turu ayrı ölçülür, ilk soruya yüklenmez</li>
+          <li>Her modelden önce <strong>yabancı modeller bellekten boşaltılır</strong></li>
+          <li><strong>Altı koşu</strong>, ikisi ters model sırasıyla</li>
+          <li>Koşu boyunca yabancı model yüklenirse <strong>uyarı basılır</strong> — ikisi bu yüzden elendi</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:var(--warn)">
+        <h3 style="color:var(--warn)">Kritik detay: reasoning modu</h3>
+        <p style="margin-bottom:10px">
+          <code>qwen3.5</code> düşünme modunu <strong>açık</strong>,
+          <code>gemma4</code> <strong>kapalı</strong> getirir.
+        </p>
+        <p>
+          Varsayılana güvenilseydi biri düşünme token'ı üretirken diğeri
+          üretmeyecek, hız ölçümü geçersiz olacaktı. Her iki modele de
+          <code>think=false</code> açıkça gönderiliyor.
+        </p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:24px">
+      token/s değeri Ollama'nın kendi <code>eval_count</code> /
+      <code>eval_duration</code> sayaçlarından hesaplanır — duvar saatinden değil.
+      Böylece ağ ve akış gecikmesi sonuca karışmaz.
+    </p>
+  </section>
+
+  <!-- 7 — Results -->
+  <section class="slide" id="results">
+    <div class="eyebrow">Sonuçlar · 6 koşu (4 temiz) · 22 Temmuz 2026</div>
+    <h2>Benchmark</h2>
+    <div style="margin-top:22px">
+      <div class="barrow">
+        <span class="lbl">qwen3.5:9b</span>
+        <div><div class="bar" style="width:100%"></div></div>
+        <span class="val">37,4 tok/s</span>
+      </div>
+      <div class="barrow">
+        <span class="lbl">gemma4:12b</span>
+        <div><div class="bar b2" style="width:74%"></div></div>
+        <span class="val">27,7 tok/s</span>
+      </div>
+    </div>
+    <table style="margin-top:24px">
+      <thead>
+        <tr><th>Metrik</th><th>qwen3.5:9b</th><th>gemma4:12b</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Üretim hızı (token ağırlıklı)</td><td><strong>37,35 ± 0,46</strong> tok/s</td><td>27,65 ± 0,27 tok/s</td></tr>
+        <tr><td>İlk cevap (TTFT, medyan)</td><td><strong>1.941 ms</strong></td><td>2.978 ms</td></tr>
+        <tr><td>Bellek (Ollama raporu)</td><td><strong>6,29 GB</strong></td><td>7,85 GB</td></tr>
+        <tr><td>Kalite</td><td>14 / 14</td><td>14 / 14</td></tr>
+        <tr><td>Kaynağa sadakat</td><td>11 / 11</td><td>11 / 11</td></tr>
+      </tbody>
+    </table>
+    <div class="grid g3" style="margin-top:26px">
+      <div class="stat"><div class="n" style="color:var(--good)">%35</div><div class="k">qwen3.5 hız avantajı</div></div>
+      <div class="stat"><div class="n">±0,5</div><div class="k">Koşular arası sapma (tok/s)</div></div>
+      <div class="stat"><div class="n">~95 ms</div><div class="k">Belge arama (medyan)</div></div>
+    </div>
+    <p class="note" style="margin-top:22px">
+      İki koşuda model sırası ters çevrildi; fark %2'nin altında kaldı, yani
+      sıra etkisi yok. Dördüncü temiz koşu sayıları bağımsız olarak yeniden
+      üretti (38,07 / 27,79). Kalite iki modelde de tavana vurdu — bu "eşit
+      kalite" değil, <strong>test setinin ayırt etme gücünün yetmediği</strong>
+      anlamına gelir.
+    </p>
+  </section>
+
+  <!-- 8 — The measurement bug -->
+  <section class="slide">
+    <div class="eyebrow">Ölçüm hijyeni</div>
+    <h2>İlk sonuç yanlıştı</h2>
+    <p class="lead">
+      İlk ölçümde 9B model <strong>34,29 GB</strong>, 12B model
+      <strong>34,58 GB</strong> bellek kullanıyor göründü. 48 GB'lık bir
+      makinede iki farklı boyutta model aynı sayıyı veremez — sayı modeli değil,
+      sistemin o anki halini ölçüyordu.
+    </p>
+    <div class="grid g2" style="margin-top:26px">
+      <div class="card" style="border-color:var(--warn)">
+        <h3 style="color:var(--warn)">İki ayrı kusur</h3>
+        <p style="margin-bottom:8px"><strong>1 —</strong> Filtre, komut satırında
+        "ollama" geçen her süreci topluyordu: <code>ollama serve</code>, masaüstü
+        uygulaması ve <em>başka bir programın</em> yüklediği 23,6 GB'lık bir model.</p>
+        <p><strong>2 —</strong> Süreç RSS'i bu iş için yanlış metrik: ağırlıklar
+        <code>mmap</code> ile eşlendiği için RSS, işletim sisteminin o an kaç
+        sayfayı bellekte tuttuğuna bağlı — 13 ile 22 GB arasında salınıyor.</p>
+      </div>
+      <div class="card" style="border-color:var(--good)">
+        <h3 style="color:var(--good)">Düzeltme</h3>
+        <p style="margin-bottom:8px">Ölçümden önce Ollama'ya <em>hangi modeller
+        bellekte</em> diye sorulup yabancılar boşaltılıyor.</p>
+        <p style="margin-bottom:8px">Bellek rakamı Ollama'nın kendi
+        <code>/api/ps</code> raporundan alınıyor.</p>
+        <p>Koşu boyunca ikinci bir sohbet modeli yüklenirse çıktıya uyarı basılıyor.</p>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:24px">
+      <div class="stat"><div class="n" style="color:var(--warn)">34,3 / 34,6 GB</div><div class="k">Önce — ölçülemez</div></div>
+      <div class="stat"><div class="n" style="color:var(--good)">6,3 / 7,9 GB</div><div class="k">Sonra — model boyutuyla tutarlı</div></div>
+    </div>
+    <p class="note" style="margin-top:22px">
+      Bir ölçüm sisteminin en tehlikeli hâli, yanlış sonuç vermesi değil;
+      <strong>makul görünen</strong> yanlış sonuç vermesidir. Bu sayıyı yakalayan
+      şey model bilgisi değil, "iki farklı model neden aynı sayıyı veriyor?"
+      sorusuydu.
+    </p>
+  </section>
+
+  <!-- 9 — Grounding -->
+  <section class="slide">
+    <div class="eyebrow">Kalite</div>
+    <h2>Asıl test: bilmediğini söyleyebiliyor mu?</h2>
+    <p class="lead">
+      Bir İK asistanının en tehlikeli hatası yanlış cevap vermek değil,
+      <strong>uydurduğunu belli etmemektir.</strong> Soru setine, cevabı
+      dokümanlarda bulunmayan üç soru bilinçli olarak eklendi.
+    </p>
+    <div class="grid g3" style="margin-top:24px">
+      <div class="card"><h3>Şirket aracı</h3><p>Tahsis politikası dokümanlarda yok</p></div>
+      <div class="card"><h3>Hisse opsiyonu</h3><p>Vesting süresi dokümanlarda yok</p></div>
+      <div class="card"><h3>Bireysel emeklilik</h3><p>Katkı payı dokümanlarda yok</p></div>
+    </div>
+    <div class="grid g2" style="margin-top:26px">
+      <div class="card">
+        <h3>İki katmanlı savunma</h3>
+        <p style="margin-bottom:8px"><strong>1. Benzerlik eşiği —</strong> hiçbir
+        parça eşiği geçemezse model hiç çağrılmaz, sistem doğrudan reddeder.</p>
+        <p><strong>2. Sistem prompt'u —</strong> eşiği geçen zayıf bağlamda
+        modelin uydurmasını engeller.</p>
+      </div>
+      <p class="note">
+        Birinci katman modelin davranışından bağımsızdır. Garantiyi modelin iyi
+        niyetine bırakmamak, prototipi üretime yaklaştıran fark budur.
+      </p>
+    </div>
+    <p class="note" style="margin-top:22px">
+      <strong>İkinci katman ilk kez sınandı.</strong> Eşik 0,46'ya çekilince
+      hisse opsiyonu sorusu (benzerlik 0,501) eşiği geçip modele ulaştı — yani
+      o soruda birinci katman devre dışıydı. Üç koşuda, iki modelde,
+      <strong>altı denemenin altısında da</strong> model reddetti ve sistem
+      prompt'undaki cümleyi birebir üretti. Daha önce bu katmanın işe yarayıp
+      yaramadığı ölçülmemişti, yalnızca varsayılıyordu.
+    </p>
+  </section>
+
+  <!-- 9 — Threshold calibration -->
+  <section class="slide">
+    <div class="eyebrow">Kalibrasyon</div>
+    <h2>Kalibrasyon seti, sistemin göreceği soruyu temsil etmiyorsa yanıltır</h2>
+    <p class="lead">
+      İlk kalibrasyon eşiği <strong>0,52</strong> verdi ve iki küme arasında
+      tertemiz bir boşluk vardı. Sonra sete gerçek kullanıcının yazdığı gibi
+      kısa sorular eklendi — <em>"Harcırah ne kadar?"</em> — ve boşluk kayboldu.
+    </p>
+    <div style="margin-top:24px">
+      <div class="barrow"><span class="lbl">Kapsam içi</span><div><div class="bar" style="width:70.8%"></div></div><span class="val">0,468 – 0,708</span></div>
+      <div class="barrow"><span class="lbl">Kapsam dışı</span><div><div class="bar b2" style="width:50.1%"></div></div><span class="val">0,278 – 0,501</span></div>
+    </div>
+    <p class="note" style="margin-top:14px">
+      En düşük kapsam içi soru (0,468) en yüksek kapsam dışı sorunun (0,501)
+      <strong>altında</strong>. Kümeler örtüşüyor: hiçbir eşik ikisini birden
+      ayıramaz. Geriye hangi hatanın satın alınacağı kalır.
+    </p>
+    <table style="margin-top:20px">
+      <thead>
+        <tr><th>Eşik</th><th>Kaçırılan doğru soru</th><th>Sızan kapsam dışı</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0,44</td><td>0 / 19</td><td>3 / 9</td></tr>
+        <tr><td><strong>0,46 — seçilen</strong></td><td><strong>0 / 19</strong></td><td><strong>2 / 9</strong></td></tr>
+        <tr><td>0,48</td><td>2 / 19</td><td>1 / 9</td></tr>
+        <tr><td>0,52 <span style="opacity:.6">— eski değer</span></td><td>4 / 19</td><td>0 / 9</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:22px">
+      Seçim, sıfır kaçırma sağlayan <strong>en yüksek</strong> değer. İki hata
+      simetrik değil: cevabı dokümanda yazan soruyu reddetmek nihai bir hatadır,
+      eşiği geçen kapsam dışı soru ise ikinci katmana — sistem prompt'una —
+      düşer. 0,52 dört doğru soruyu reddediyordu.
+    </p>
+  </section>
+
+  <!-- 10 — Architecture -->
+  <section class="slide">
+    <div class="eyebrow">Mimari</div>
+    <h2>Soru nasıl cevaba dönüşüyor?</h2>
+    <div class="flow" style="margin:14px 0 26px">
+      <div class="step"><b>1 · Parçala</b><span>Markdown başlık ağacına göre; tablolar bölünmez</span></div>
+      <div class="step"><b>2 · Göm</b><span>Her parça 1024 boyutlu vektöre çevrilir</span></div>
+      <div class="step"><b>3 · Ara</b><span>ChromaDB'de kosinüs benzerliği, en iyi 4 parça</span></div>
+      <div class="step"><b>4 · Süz</b><span>Eşiğin altı elenir; hiçbiri kalmazsa reddet</span></div>
+      <div class="step"><b>5 · Üret</b><span>Yalnızca bulunan parçalara dayalı cevap</span></div>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Neden çerçeve (LangChain) kullanılmadı?</h3>
+        <p>Tüm hat ~400 satır. Çerçeve bu satırları gizlerdi ama ölçüm
+        noktalarına erişimi de zorlaştırırdı. Üretim ölçeğinde tercih farklı olurdu.</p>
+      </div>
+      <div class="card">
+        <h3>Neden ChromaDB?</h3>
+        <p>Docker veya ayrı servis gerektirmez, diske kalıcı yazar. Qdrant ve
+        pgvector kurumsal ölçekte daha uygun ama staj kapsamı için fazla
+        operasyon yükü.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 — Interface -->
+  <section class="slide">
+    <div class="eyebrow">Arayüz</div>
+    <h2>Prototip</h2>
+    <div class="grid g2">
+      <div>
+        <ul>
+          <li><strong>Akışlı cevap</strong> — token'lar üretildikçe görünür</li>
+          <li><strong>Kaynak kartları</strong> — hangi bölümden geldiği ve benzerlik skoru</li>
+          <li><strong>Canlı model değiştirme</strong> — aynı soruyu diğer modele sorun</li>
+          <li><strong>Durum şeridi</strong> — Ollama erişilebilir mi, indeks hazır mı</li>
+          <li><strong>Benchmark paneli</strong> — ölçüm sonuçları arayüzde</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Teknoloji</h3>
+        <p style="margin-bottom:6px">React + TypeScript (<code>strict</code>), Tailwind, Vite</p>
+        <p style="margin-bottom:6px">FastAPI + SSE akışı</p>
+        <p>ChromaDB · Ollama HTTP API</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:24px">
+      Arayüzde gerçek token akışı var; üstüne sahte daktilo animasyonu
+      eklenmedi — ölçülen gecikmeyi gizleyip yanıltıcı olurdu.
+    </p>
+  </section>
+
+  <!-- 12 — Recommendation -->
+  <section class="slide" id="reco">
+    <div class="eyebrow">Sonuç</div>
+    <h2>Kurumsal öneri</h2>
+    <p class="lead">
+      Ölçümün gösterdiği asıl sonuç şu: <strong>bu iş yükü için pahalı donanım
+      gerekmiyor.</strong> Darboğaz bellek değil üretim hızı, ve 10 GB sınıfı bir
+      model İK sorularını eksiksiz cevaplıyor.
+    </p>
+    <div class="grid g3" style="margin-top:26px">
+      <div class="card">
+        <h3>Model · <code>qwen3.5:9b</code></h3>
+        <p>Her performans ekseninde önde, kalitede ölçülebilir kaybı yok.
+        <code>gemma4:12b</code> ikinci model olarak kalsın — farklı üretici,
+        çapraz doğrulama imkânı.</p>
+      </div>
+      <div class="card">
+        <h3>Donanım · 16–24 GB</h3>
+        <p>Model 6,3 GB tutuyor; 16 GB unified memory yeterli. Mac mini M4
+        24 GB ≈ 77.000 TL; RTX 5060 Ti 16GB'lı tam sistem ≈ 48–62.000 TL
+        (22.07.2026).</p>
+      </div>
+      <div class="card">
+        <h3>Dağıtım · tek sunucu</h3>
+        <p>Şirket içi bir makinede Ollama + FastAPI; kullanıcılar tarayıcıdan
+        bağlanır. Doküman da soru da ağdan çıkmaz.</p>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:26px">
+      <div class="card" style="border-color:var(--warn)">
+        <h3 style="color:var(--warn)">Gerekçe maliyet değil</h3>
+        <p>Fiyat araştırması beklentiyi çürüttü: aynı sınıf model bulutta yılda
+        ~600 TL, lokal kurulumun <em>yalnızca elektriği</em> 1.700–5.800 TL.
+        Lokal bu ölçekte tasarruf değil, <strong>ölçülebilir bir gizlilik
+        primidir</strong> — KVKK kapsamındaki özlük verisinde haklı çıkar,
+        genel amaçlı sohbette çıkmaz.</p>
+      </div>
+      <div class="card">
+        <h3>Üretime geçmeden önce</h3>
+        <p style="margin-bottom:8px"><strong>Ölçülmüş bir kusur:</strong>
+        <em>"Babalık izni kaç gün?"</em> sorusunda cevabı birebir içeren parça
+        37 parça arasında 12. sırada kalıyor, top-4'e giremiyor ve sistem
+        reddediyor. Kısa sorularda vektör araması yetersiz — çözüm hibrit arama
+        (BM25 + vektör). <strong>Benchmark bunu göremedi</strong>, çünkü ölçüm
+        setindeki soruların hepsi uzun.</p>
+        <p>Ayrıca erişim yetkilendirmesi ve doküman güncelleme akışı eklenmeli.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:22px">
+      <strong>Ne zaman lokal olmaz?</strong> Karmaşık çok adımlı akıl yürütme,
+      uzun kod üretimi veya yüksek eşzamanlı kullanıcı gerekiyorsa 10 GB sınıfı
+      bir modelin sınırı hızla görünür. Lokal kurulum, kapsamı belli ve verisi
+      hassas işler için doğru araçtır — İK soru-cevabı tam olarak bu tanıma uyar.
+    </p>
+  </section>
+
+  <!-- 13 — Close -->
+  <section class="slide">
+    <div class="eyebrow">Kapanış</div>
+    <h1>Teşekkürler</h1>
+    <p class="lead">
+      Kaynak kod, ölçüm çıktıları ve ayrıntılı rapor depoda:
+      <code>docs/arastirma-raporu.md</code> · <code>docs/proje-raporu.md</code> ·
+      <code>backend/bench/results/</code>
+    </p>
+    <div class="kicker">
+      Yiğit Erdoğan · github.com/Yigtwxx · Temmuz 2026
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prev" aria-label="Önceki slayt">‹</button>
+  <span id="counter">1 / 14</span>
+  <button id="next" aria-label="Sonraki slayt">›</button>
+</div>
+
+<script>
+  // Measured values are written directly into the results slide rather than
+  // injected at runtime: the deck must open from a file:// URL with no server
+  // and no data file next to it.
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let index = 0;
+
+  function show(next) {
+    index = Math.max(0, Math.min(slides.length - 1, next));
+    slides.forEach((slide, i) => slide.classList.toggle('on', i === index));
+    document.getElementById('counter').textContent = `${index + 1} / ${slides.length}`;
+    document.getElementById('rail').style.width = `${((index + 1) / slides.length) * 100}%`;
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('next').addEventListener('click', () => show(index + 1));
+  document.getElementById('prev').addEventListener('click', () => show(index - 1));
+
+  document.addEventListener('keydown', (event) => {
+    if (['ArrowRight', ' ', 'PageDown'].includes(event.key)) { event.preventDefault(); show(index + 1); }
+    if (['ArrowLeft', 'PageUp'].includes(event.key)) { event.preventDefault(); show(index - 1); }
+    if (event.key === 'Home') show(0);
+    if (event.key === 'End') show(slides.length - 1);
+  });
+
+  show(0);
+</script>
