@@ -23,9 +23,10 @@ import type { HealthResponse, ModelInfo, ModelsResponse, Source } from '@/lib/ty
  * access rather than returning null, and a theme preference is not worth
  * taking the app down for.
  *
- * The same key and the same fallback order are duplicated in the inline script
- * in `index.html`, which applies the class before first paint. If either side
- * changes, both have to.
+ * The same key and the same fallback order are duplicated in
+ * `public/theme-init.js`, which applies the class before first paint. It sits
+ * in its own file rather than inline in `index.html` so the CSP can stay on
+ * `script-src 'self'`. If either side changes, both have to.
  */
 const THEME_KEY = 'novatek-theme';
 
@@ -190,9 +191,17 @@ export default function App() {
       {/* The rail widens with the window instead of stopping at the shell's
           centring gutter — on a wide screen that gutter left a dead strip to
           its right. The chat column absorbs the rest; its own max-w-3xl keeps
-          the reading measure fixed. */}
+          the reading measure fixed.
+
+          `min-h-0` on both children is load-bearing, not tidying. A grid item
+          defaults to `min-height: auto`, which refuses to shrink below its
+          content — so once a conversation grew past the viewport the column
+          grew with it, the `overflow-y-auto` inside never received a bounded
+          height to scroll within, and `overflow-hidden` here clipped the rest.
+          The transcript above the fold and the composer below it both became
+          unreachable, with no scrollbar to say so. */}
       <main className="mx-auto grid w-full max-w-[110rem] grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_16rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-w-0">
+        <div className="min-h-0 min-w-0">
           {bootState === 'error' ? (
             <div className="flex h-full flex-col items-center justify-center gap-4 px-5 text-center">
               <PlugZap className="size-8 text-destructive/70" aria-hidden />
@@ -221,7 +230,7 @@ export default function App() {
           )}
         </div>
 
-        <aside className="hidden border-l border-border bg-sidebar/40 lg:block">
+        <aside className="hidden min-h-0 border-l border-border bg-sidebar/40 lg:block">
           <Tabs defaultValue="sources" className="h-full gap-0">
             <TabsList variant="line" className="w-full px-4 pt-3 pb-1">
               <TabsTrigger value="sources">
