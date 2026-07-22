@@ -8,6 +8,9 @@ secrets/
 # Source assignment brief — not our work to redistribute
 *.pdf
 
+# Working notes from the brainstorming/planning skills — not part of the deliverable
+docs/superpowers/
+
 # Python
 __pycache__/
 *.py[cod]
