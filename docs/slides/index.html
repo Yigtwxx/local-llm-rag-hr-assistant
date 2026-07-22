@@ -283,7 +283,7 @@
 
   <!-- 1 — Cover -->
   <section class="slide on">
-    <div class="eyebrow">Staj Projesi · Temmuz 2026</div>
+    <div class="eyebrow">Teknik Araştırma · Temmuz 2026</div>
     <h1>Lokalde LLM Çalıştırma</h1>
     <p class="lead">
       İnternete çıkmadan çalışan bir dil modeli altyapısının kurulabilirliği,
@@ -389,7 +389,7 @@
     <div class="eyebrow">Seçim</div>
     <h2>Hangi modeller, neden?</h2>
     <p class="lead">
-      Staj dokümanı örnek olarak Llama 3 8B ve Gemma 2 9B veriyordu. Bu modeller
+      Aday listesinde başlangıçta Llama 3 8B ve Gemma 2 9B vardı. Bu modeller
       2024 tarihli; aynı boyut sınıfında güncel halefleri var. Rapora eskimiş
       bir kıyas koymamak için liste yeniden araştırıldı.
     </p>
@@ -633,8 +633,15 @@
       <div class="step"><b>2 · Göm</b><span>Her parça 1024 boyutlu vektöre çevrilir</span></div>
       <div class="step"><b>3 · Ara</b><span>ChromaDB'de kosinüs benzerliği, en iyi 4 parça</span></div>
       <div class="step"><b>4 · Süz</b><span>Eşiğin altı elenir; hiçbiri kalmazsa reddet</span></div>
-      <div class="step"><b>5 · Üret</b><span>Yalnızca bulunan parçalara dayalı cevap</span></div>
+      <div class="step"><b>5 · Tamamla</b><span>BM25: nadir bir kelime birebir geçiyorsa 1 parça daha</span></div>
+      <div class="step"><b>6 · Üret</b><span>Yalnızca bulunan parçalara dayalı cevap</span></div>
     </div>
+    <p class="note" style="margin:-12px 0 24px">
+      <strong>5. adım yalnızca ekler, hiçbir şeyi değiştirmez.</strong> Vektör
+      kolu bir parça bile bulamadıysa hiç çalışmaz — yani "hiçbiri kalmazsa
+      reddet" garantisi olduğu gibi durur. Öncesi/sonrası: cevabına ulaşan soru
+      17/19 → 18/19, teslim edilen parça kümesi değişen soru 1/19.
+    </p>
     <div class="grid g2">
       <div class="card">
         <h3>Neden çerçeve (LangChain) kullanılmadı?</h3>
@@ -644,8 +651,8 @@
       <div class="card">
         <h3>Neden ChromaDB?</h3>
         <p>Docker veya ayrı servis gerektirmez, diske kalıcı yazar. Qdrant ve
-        pgvector kurumsal ölçekte daha uygun ama staj kapsamı için fazla
-        operasyon yükü.</p>
+        pgvector kurumsal ölçekte daha uygun ama bu ölçekteki bir prototip için
+        fazla operasyon yükü.</p>
       </div>
     </div>
   </section>
@@ -659,6 +666,7 @@
         <ul>
           <li><strong>Akışlı cevap</strong> — token'lar üretildikçe görünür</li>
           <li><strong>Kaynak kartları</strong> — hangi bölümden geldiği ve benzerlik skoru</li>
+          <li><strong>Takip soruları</strong> — cevabın altında, ek model çağrısı olmadan</li>
           <li><strong>Canlı model değiştirme</strong> — aynı soruyu diğer modele sorun</li>
           <li><strong>Durum şeridi</strong> — Ollama erişilebilir mi, indeks hazır mı</li>
           <li><strong>Benchmark paneli</strong> — ölçüm sonuçları arayüzde</li>
@@ -673,7 +681,10 @@
     </div>
     <p class="note" style="margin-top:24px">
       Arayüzde gerçek token akışı var; üstüne sahte daktilo animasyonu
-      eklenmedi — ölçülen gecikmeyi gizleyip yanıltıcı olurdu.
+      eklenmedi — ölçülen gecikmeyi gizleyip yanıltıcı olurdu. Takip soruları da
+      anlık üretilmiyor: indeksleme sırasında yazılıp <strong>elle gözden
+      geçirildikleri</strong> için her çip cevaplanabilir olmak zorunda —
+      asistanın kendi önerisini reddetmesi mümkün değil.
     </p>
   </section>
 
@@ -716,12 +727,16 @@
       </div>
       <div class="card">
         <h3>Üretime geçmeden önce</h3>
-        <p style="margin-bottom:8px"><strong>Ölçülmüş bir kusur:</strong>
-        <em>"Babalık izni kaç gün?"</em> sorusunda cevabı birebir içeren parça
-        37 parça arasında 12. sırada kalıyor, top-4'e giremiyor ve sistem
-        reddediyor. Kısa sorularda vektör araması yetersiz — çözüm hibrit arama
-        (BM25 + vektör). <strong>Benchmark bunu göremedi</strong>, çünkü ölçüm
-        setindeki soruların hepsi uzun.</p>
+        <p style="margin-bottom:8px"><strong>Kapanan kusur:</strong>
+        <em>"Babalık izni kaç gün?"</em> — cevabı birebir içeren parça 12. sırada
+        kalıp reddediliyordu. Aramaya eklenen BM25 kolu onu modele ulaştırıyor;
+        cevabına ulaşan soru <strong>17/19 → 18/19</strong>, kapsam dışına
+        eklenen parça <strong>0</strong>.</p>
+        <p style="margin-bottom:8px"><strong>Açık kalan:</strong> düzeltmeyi
+        ölçmek için kurulan araç ikinci bir kusur buldu —
+        <em>"İzin devri var mı?"</em>, skoru eşiğin üstünde olduğu için hiçbir
+        eşik ayarının bulamayacağı bir vaka. "devri" ≠ "devredilir": Türkçe ekler
+        kelime eşleşmesini yeniyor, gövdeleyici gerekiyor.</p>
         <p>Ayrıca erişim yetkilendirmesi ve doküman güncelleme akışı eklenmeli.</p>
       </div>
     </div>
