@@ -1,4 +1,4 @@
-import { FileText, Search } from 'lucide-react';
+import { FileText, Search, Type } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 import { Badge } from '@/components/ui/badge';
 import type { Source } from '@/lib/types';
@@ -21,7 +21,12 @@ interface SourceListProps {
  */
 function scoreTone(score: number): { text: string; bar: string } {
   if (score >= 0.62) return { text: 'text-success', bar: 'bg-success' };
-  if (score >= 0.5) return { text: 'text-chart-2', bar: 'bg-chart-2' };
+  // The middle band's number is neutral while its bar keeps the chart colour.
+  // `text-chart-2` measured 3.68:1 on the light background — the chart tokens
+  // are tuned to be distinguishable from each other as fills, not to be legible
+  // as 12px type, which is the same trap hardcoded Tailwind colours fell into
+  // here before. Strong and weak still speak through `--success`/`--warning`.
+  if (score >= 0.5) return { text: 'text-foreground', bar: 'bg-chart-2' };
   return { text: 'text-warning', bar: 'bg-warning' };
 }
 
@@ -118,17 +123,37 @@ export function SourceList({ sources, retrievalMs, variant = 'rail' }: SourceLis
             <ScoreMeter score={source.score} />
           </div>
 
-          <p className="mt-2.5 line-clamp-4 pl-7 text-xs leading-relaxed text-muted-foreground">
+          {/* `break-words` for the same reason as the answer bubbles: the rail
+              is only 16rem wide, so an unbroken run in a passage escapes the
+              card long before it would escape the transcript. */}
+          <p className="mt-2.5 line-clamp-4 pl-7 text-xs leading-relaxed break-words text-muted-foreground">
             {trimEcho(source.excerpt, source.doc_title, source.section)}
           </p>
 
-          <Badge
-            variant="secondary"
-            className="mt-2.5 ml-7 gap-1 font-mono text-[10px] font-normal"
-          >
-            <FileText className="size-3" aria-hidden />
-            {source.source_file}
-          </Badge>
+          <div className="mt-2.5 ml-7 flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant="secondary"
+              className="gap-1 font-mono text-[10px] font-normal"
+            >
+              <FileText className="size-3" aria-hidden />
+              {source.source_file}
+            </Badge>
+
+            {/* Word matches are here despite a low similarity score, not
+                because of one. Without this the meter reads as "weak match"
+                and quietly undermines a passage that answers the question
+                word for word. */}
+            {source.matched_by === 'lexical' && (
+              <Badge
+                variant="secondary"
+                className="gap-1 text-[10px] font-normal"
+                title="Bu parça, sorudaki nadir bir kelimeyi birebir içerdiği için getirildi. Benzerlik skoru düşük görünür; eşleşme kelime düzeyindedir."
+              >
+                <Type className="size-3" aria-hidden />
+                kelime eşleşmesi
+              </Badge>
+            )}
+          </div>
         </SpotlightCard>
       ))}
     </div>
