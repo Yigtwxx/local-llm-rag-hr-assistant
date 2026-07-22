@@ -1,0 +1,54 @@
+# Runs the assistant as a pair of containers. Ollama deliberately stays on the
+# host: inside a container it cannot reach Metal on macOS, so it would fall back
+# to CPU and the numbers in the reports would no longer describe this system.
+#
+#   docker compose up --build
+#
+# Ports 8180 and 8100 avoid 8000/3000 (another project's compose), 5173
+# (scripts/dev.sh) and 11434 (Ollama). Override with WEB_PORT and
+# BACKEND_HOST_PORT.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: novatek-hr-backend
+    environment:
+      # DOCKER_-prefixed on purpose: the repo's .env sets OLLAMA_HOST to
+      # localhost for the host-side dev setup, and Compose would interpolate
+      # that value here, where it points at the container itself.
+      OLLAMA_HOST: ${DOCKER_OLLAMA_HOST:-http://host.docker.internal:11434}
+      KB_DIR: /data/kb
+      STORAGE_DIR: /app/storage
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+      # The browser only ever talks to the web service, so this covers the one
+      # case that is left: someone calling the API directly from a page.
+      CORS_ORIGINS: http://localhost:${WEB_PORT:-8180}
+    extra_hosts:
+      # Docker Desktop provides this name already; Linux needs it spelled out.
+      - "host.docker.internal:host-gateway"
+    ports:
+      # Published only for FastAPI's /docs — the app itself does not need it.
+      - "${BACKEND_HOST_PORT:-8100}:8000"
+    volumes:
+      - chroma-storage:/app/storage
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: novatek-hr-web
+    ports:
+      - "${WEB_PORT:-8180}:80"
+    depends_on:
+      backend:
+        # Without this, nginx answers 502 for as long as the first-run ingest
+        # takes.
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  chroma-storage:
