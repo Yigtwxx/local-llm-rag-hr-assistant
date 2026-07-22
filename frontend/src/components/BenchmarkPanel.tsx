@@ -164,14 +164,34 @@ function SummaryCard({
 
 export function BenchmarkPanel() {
   const [data, setData] = useState<BenchResponse | undefined>(undefined);
+  // Three outcomes that used to collapse into one sentence. "Henüz ölçüm yok."
+  // was shown while the request was still in flight, and again when it failed —
+  // so a backend that was down read as a benchmark nobody had run yet, which is
+  // the same silent failure the status strip was fixed for.
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   useEffect(() => {
     fetchBenchmark()
-      .then(setData)
-      .catch(() => setData({ available: false }));
+      .then((response) => {
+        setData(response);
+        setState('ready');
+      })
+      .catch(() => setState('error'));
   }, []);
 
   const summaries = data?.summaries ?? [];
+
+  if (state === 'loading') {
+    return <p className="text-sm text-muted-foreground">Ölçüm yükleniyor…</p>;
+  }
+
+  if (state === 'error') {
+    return (
+      <p className="text-sm text-warning">
+        Ölçüm sonuçları alınamadı — arka uç yanıt vermiyor.
+      </p>
+    );
+  }
 
   return (
     <section className="space-y-2.5">
