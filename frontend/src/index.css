@@ -249,6 +249,18 @@
     @apply font-sans;
     -webkit-font-smoothing: antialiased;
     }
+
+  /* Tailwind v4's Preflight sets `cursor: default` on buttons. Restored here
+     rather than per component, so every control — shadcn's Button and
+     TabsTrigger, the model switcher, the suggestion cards — answers the
+     pointer the same way without touching generated files. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+    }
+  button:disabled {
+    cursor: not-allowed;
+    }
 }
 
 /* ------------------------------------------------------------------ */
