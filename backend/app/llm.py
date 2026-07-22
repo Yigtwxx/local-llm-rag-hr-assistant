@@ -22,7 +22,23 @@ from app.config import Settings
 
 
 class OllamaError(RuntimeError):
-    """Raised when Ollama is unreachable or returns an error status."""
+    """Raised when Ollama is unreachable or returns an error status.
+
+    Carries two messages on purpose. The exception text is English and names
+    hosts, status codes and model tags: it is what `ingest` and the benchmark
+    harness print, and what lands in the server log. `user_message` is the
+    Turkish sentence `/api/chat` puts in front of the reader, who gets no value
+    from a status code and cannot act on an English one — the interface already
+    had to stop repeating the browser's own untranslated network errors for the
+    same reason.
+    """
+
+    #: Used when a raise site has nothing more specific to offer.
+    DEFAULT_USER_MESSAGE = "Yanıt alınamadı. Lütfen tekrar deneyin."
+
+    def __init__(self, message: str, *, user_message: str | None = None) -> None:
+        super().__init__(message)
+        self.user_message = user_message or self.DEFAULT_USER_MESSAGE
 
 
 @dataclass
@@ -59,6 +75,11 @@ class StreamedChunk:
 
 
 _RETRYABLE = (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError)
+
+# The one failure a reader can actually do something about, so it says what.
+_UNREACHABLE_TR = (
+    "Ollama'ya ulaşılamıyor. Servisin çalıştığından emin olup tekrar deneyin."
+)
 
 
 class OllamaClient:
@@ -125,16 +146,33 @@ class OllamaClient:
             # Best effort: a failed unload costs accuracy, not correctness.
             pass
 
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        """Embed a batch of texts with the configured embedding model.
+
+        Every way out of here is an `OllamaError`, which is the contract the
+        rest of the app relies on: `/api/chat` turns that into an error event
+        the reader can act on, and anything else escapes as an unhandled
+        exception. Retries used to reraise `httpx.ConnectError` untouched, so a
+        stopped Ollama reached the interface as a generic "could not finish"
+        instead of saying which service was down.
+        """
+        if not texts:
+            return []
+        try:
+            return await self._embed(texts)
+        except _RETRYABLE as exc:
+            raise OllamaError(
+                f"Cannot reach Ollama at {self._settings.ollama_host}",
+                user_message=_UNREACHABLE_TR,
+            ) from exc
+
     @retry(
         retry=retry_if_exception_type(_RETRYABLE),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=8),
         reraise=True,
     )
-    async def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed a batch of texts with the configured embedding model."""
-        if not texts:
-            return []
+    async def _embed(self, texts: list[str]) -> list[list[float]]:
         response = await self._client.post(
             "/api/embed",
             json={"model": self._settings.embedding_model, "input": texts},
@@ -144,7 +182,11 @@ class OllamaClient:
             # echo the request body back, which may contain document text.
             raise OllamaError(
                 f"Embedding request failed ({response.status_code}). "
-                f"Is '{self._settings.embedding_model}' pulled?"
+                f"Is '{self._settings.embedding_model}' pulled?",
+                user_message=(
+                    f"Gömme modeli '{self._settings.embedding_model}' yanıt vermedi. "
+                    "Modelin indirilmiş olduğundan emin olun."
+                ),
             )
         embeddings = response.json().get("embeddings", [])
         if len(embeddings) != len(texts):
@@ -200,7 +242,11 @@ class OllamaClient:
                     await response.aread()
                     raise OllamaError(
                         f"Chat request failed ({response.status_code}). "
-                        f"Is '{model}' pulled?"
+                        f"Is '{model}' pulled?",
+                        user_message=(
+                            f"'{model}' modeli yanıt vermedi. "
+                            "Modelin indirilmiş olduğundan emin olun."
+                        ),
                     )
 
                 async for line in response.aiter_lines():
@@ -237,5 +283,6 @@ class OllamaClient:
                         yield StreamedChunk(content=content)
         except _RETRYABLE as exc:
             raise OllamaError(
-                f"Cannot reach Ollama at {self._settings.ollama_host}"
+                f"Cannot reach Ollama at {self._settings.ollama_host}",
+                user_message=_UNREACHABLE_TR,
             ) from exc
