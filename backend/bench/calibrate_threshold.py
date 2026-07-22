@@ -15,36 +15,13 @@ Run with:  uv run python -m bench.calibrate_threshold
 """
 
 import asyncio
-from pathlib import Path
-
-import yaml
 
 from app.config import get_settings
 from app.llm import OllamaClient
 from app.retrieval import VectorStore
+from bench.questions import collect_questions, load_suite
 
-BENCH_DIR = Path(__file__).resolve().parent
 SWEEP = (0.40, 0.42, 0.44, 0.46, 0.48, 0.50, 0.52, 0.55, 0.60)
-
-
-def collect_questions(
-    suite: dict,
-) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
-    """Label every question as in-scope or out-of-scope, from both sections."""
-    in_scope: list[tuple[str, str]] = []
-    out_of_scope: list[tuple[str, str]] = []
-
-    for case in suite.get("rag", []):
-        target = in_scope if case.get("grounded", True) else out_of_scope
-        target.append((case["question"], case["id"]))
-
-    calibration = suite.get("calibration", {}) or {}
-    for question in calibration.get("in_scope", []):
-        in_scope.append((question, "kısa"))
-    for question in calibration.get("out_of_scope", []):
-        out_of_scope.append((question, "kısa"))
-
-    return in_scope, out_of_scope
 
 
 async def calibrate() -> None:
@@ -55,7 +32,7 @@ async def calibrate() -> None:
     if store.count() == 0:
         raise SystemExit("Vector store is empty. Run: uv run python -m app.ingest")
 
-    suite = yaml.safe_load((BENCH_DIR / "prompts.yaml").read_text(encoding="utf-8"))
+    suite = load_suite()
     in_questions, out_questions = collect_questions(suite)
 
     async def top_score(question: str) -> float:
